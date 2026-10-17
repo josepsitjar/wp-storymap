@@ -10,6 +10,10 @@
 	max-width: none;
 }
 
+.storymap-map-container--custom-width {
+	max-width: none;
+}
+
 .storymap-map-container .maplibregl-marker {
 	cursor: pointer;
 }
@@ -98,13 +102,61 @@
 	background: rgb(255 255 255 / 88%);
 	box-shadow: 0 2px 12px rgb(0 0 0 / 28%);
 	backdrop-filter: blur(5px);
+	scrollbar-color: #646970 #e0e0e0;
+	scrollbar-width: auto;
 	z-index: 5;
+}
+
+.storymap-point-info::-webkit-scrollbar {
+	width: 12px;
+}
+
+.storymap-point-info::-webkit-scrollbar-track {
+	background: #e0e0e0;
+}
+
+.storymap-point-info::-webkit-scrollbar-thumb {
+	border: 3px solid #e0e0e0;
+	border-radius: 6px;
+	background: #646970;
+}
+
+.storymap-point-info-scrollbar {
+	position: absolute;
+	width: 12px;
+	border-radius: 6px;
+	background: #e0e0e0;
+	cursor: pointer;
+	touch-action: none;
+	z-index: 6;
+}
+
+.storymap-point-info-scrollbar[hidden] {
+	display: none;
+}
+
+.storymap-point-info-scrollbar-thumb {
+	position: absolute;
+	inset: 0 3px auto;
+	border-radius: 6px;
+	background: #646970;
+	cursor: grab;
+}
+
+.storymap-point-info-scrollbar:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
+.storymap-point-info-scrollbar:active .storymap-point-info-scrollbar-thumb {
+	cursor: grabbing;
 }
 
 .storymap-point-info--desktop {
 	width: var(--storymap-panel-width);
 	height: 100%;
-	max-height: none;
+	max-height: 100%;
+	overflow-y: auto;
 	border: 0;
 	border-radius: 0;
 }

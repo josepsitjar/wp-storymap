@@ -271,16 +271,147 @@ class StorymapNavigationControl {
 	}
 }
 
+let pointInfoPanelId = 0;
+
 function createPointInfoPanel( map, container, intro ) {
+	pointInfoPanelId += 1;
 	const panel = document.createElement( 'section' );
+	panel.id = `wp-storymap-point-info-${ pointInfoPanelId }`;
 	panel.className = 'storymap-point-info';
 	panel.setAttribute( 'aria-live', 'polite' );
 	panel.hidden = false;
+
+	const scrollbar = document.createElement( 'div' );
+	scrollbar.className = 'storymap-point-info-scrollbar';
+	scrollbar.setAttribute( 'role', 'scrollbar' );
+	scrollbar.setAttribute(
+		'aria-label',
+		__( 'Story panel scroll', 'wp-storymap' )
+	);
+	scrollbar.setAttribute( 'aria-controls', panel.id );
+	scrollbar.setAttribute( 'aria-orientation', 'vertical' );
+	scrollbar.setAttribute( 'aria-valuemin', '0' );
+	scrollbar.setAttribute( 'aria-valuenow', '0' );
+	scrollbar.setAttribute( 'aria-valuemax', '0' );
+	scrollbar.tabIndex = 0;
+
+	const scrollbarThumb = document.createElement( 'span' );
+	scrollbarThumb.className = 'storymap-point-info-scrollbar-thumb';
+	scrollbar.append( scrollbarThumb );
 
 	const fallbackContainer = document.createElement( 'div' );
 	fallbackContainer.className = 'storymap-point-info-fallback';
 	fallbackContainer.hidden = true;
 	container.after( fallbackContainer );
+	container.append( scrollbar );
+
+	const updateScrollbar = () => {
+		const maxScroll = panel.scrollHeight - panel.clientHeight;
+		const isScrollable = maxScroll > 1 && panel.clientHeight > 0;
+
+		scrollbar.hidden = ! isScrollable || panel.parentElement !== container;
+		if ( scrollbar.hidden ) {
+			return;
+		}
+
+		const mapBounds = container.getBoundingClientRect();
+		const panelBounds = panel.getBoundingClientRect();
+		const trackHeight = Math.max( 0, panelBounds.height - 16 );
+		const thumbHeight = Math.min(
+			trackHeight,
+			Math.max(
+				28,
+				trackHeight * ( panel.clientHeight / panel.scrollHeight )
+			)
+		);
+		const thumbTravel = Math.max( 0, trackHeight - thumbHeight );
+		const thumbTop =
+			maxScroll > 0 ? ( panel.scrollTop / maxScroll ) * thumbTravel : 0;
+
+		scrollbar.style.left = `${ panelBounds.right - mapBounds.left - 14 }px`;
+		scrollbar.style.top = `${ panelBounds.top - mapBounds.top + 8 }px`;
+		scrollbar.style.height = `${ trackHeight }px`;
+		scrollbarThumb.style.height = `${ thumbHeight }px`;
+		scrollbarThumb.style.transform = `translateY(${ thumbTop }px)`;
+		scrollbar.setAttribute( 'aria-valuemax', `${ maxScroll }` );
+		scrollbar.setAttribute(
+			'aria-valuenow',
+			`${ Math.round( panel.scrollTop ) }`
+		);
+	};
+
+	let scrollbarDrag = null;
+	scrollbar.addEventListener( 'pointerdown', ( event ) => {
+		if ( scrollbar.hidden || event.button !== 0 ) {
+			return;
+		}
+
+		event.preventDefault();
+		const trackBounds = scrollbar.getBoundingClientRect();
+		const maxScroll = panel.scrollHeight - panel.clientHeight;
+		const thumbTravel = trackBounds.height - scrollbarThumb.offsetHeight;
+		if ( event.target !== scrollbarThumb ) {
+			const position = Math.max(
+				0,
+				Math.min(
+					thumbTravel,
+					event.clientY -
+						trackBounds.top -
+						scrollbarThumb.offsetHeight / 2
+				)
+			);
+			panel.scrollTop =
+				thumbTravel > 0 ? ( position / thumbTravel ) * maxScroll : 0;
+			updateScrollbar();
+		}
+
+		scrollbarDrag = {
+			pointerY: event.clientY,
+			scrollTop: panel.scrollTop,
+			thumbTravel,
+			maxScroll,
+		};
+		scrollbar.setPointerCapture( event.pointerId );
+	} );
+	scrollbar.addEventListener( 'pointermove', ( event ) => {
+		if ( ! scrollbarDrag ) {
+			return;
+		}
+
+		const scrollRatio =
+			scrollbarDrag.thumbTravel > 0
+				? ( event.clientY - scrollbarDrag.pointerY ) /
+					scrollbarDrag.thumbTravel
+				: 0;
+		panel.scrollTop =
+			scrollbarDrag.scrollTop + scrollRatio * scrollbarDrag.maxScroll;
+		updateScrollbar();
+	} );
+	scrollbar.addEventListener( 'pointerup', () => {
+		scrollbarDrag = null;
+	} );
+	scrollbar.addEventListener( 'pointercancel', () => {
+		scrollbarDrag = null;
+	} );
+	scrollbar.addEventListener( 'keydown', ( event ) => {
+		const pageStep = panel.clientHeight * 0.9;
+		const keySteps = {
+			ArrowDown: 40,
+			ArrowUp: -40,
+			PageDown: pageStep,
+			PageUp: -pageStep,
+			Home: -panel.scrollTop,
+			End: panel.scrollHeight - panel.scrollTop,
+		};
+		if ( ! Object.prototype.hasOwnProperty.call( keySteps, event.key ) ) {
+			return;
+		}
+
+		event.preventDefault();
+		panel.scrollTop += keySteps[ event.key ];
+		updateScrollbar();
+	} );
+	panel.addEventListener( 'scroll', updateScrollbar );
 
 	let activeCoordinates = null;
 	let scheduledPosition = false;
@@ -317,6 +448,7 @@ function createPointInfoPanel( map, container, intro ) {
 			panel.style.top = '0';
 			panel.style.bottom = '0';
 			panel.style.transform = 'none';
+			updateScrollbar();
 			return;
 		}
 
@@ -332,6 +464,7 @@ function createPointInfoPanel( map, container, intro ) {
 			const top = mapBounds.height - panelBounds.height;
 			panel.style.left = '0';
 			panel.style.top = `${ top }px`;
+			updateScrollbar();
 			return;
 		}
 
@@ -385,6 +518,7 @@ function createPointInfoPanel( map, container, intro ) {
 		if ( ! availablePosition ) {
 			fallbackContainer.append( panel );
 			fallbackContainer.hidden = false;
+			updateScrollbar();
 			return;
 		}
 
@@ -393,6 +527,7 @@ function createPointInfoPanel( map, container, intro ) {
 		);
 		panel.style.left = `${ availablePosition.left }px`;
 		panel.style.top = `${ availablePosition.top }px`;
+		updateScrollbar();
 	};
 
 	const schedulePosition = () => {

@@ -47,6 +47,10 @@ $class         = 'storymap-map-container';
 $style         = sprintf( 'height:%dpx', $height );
 $points        = array();
 
+if ( ! $is_full_width ) {
+	$class .= ' storymap-map-container--custom-width';
+}
+
 if ( $story_number > 0 ) {
 	global $wpdb;
 
@@ -118,7 +122,7 @@ if ( $is_full_width && empty( $attributes['align'] ) ) {
 }
 
 if ( ! $is_full_width ) {
-	$style .= sprintf( ';width:%dpx', $width );
+	$style .= sprintf( ';width:%dpx;max-width:none', $width );
 }
 
 echo '<div ' . get_block_wrapper_attributes(

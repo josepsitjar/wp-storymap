@@ -40,6 +40,13 @@ export default function Edit( { attributes, setAttributes } ) {
 	const height = Math.max( 1, Number( storyMeta.wp_storymap_height ) || 500 );
 	const width = Math.max( 0, Number( storyMeta.wp_storymap_width ) || 0 );
 	const isFullWidth = width === 0;
+	const containerClasses = [ 'storymap-map-container' ];
+	if ( isFullWidth && ! attributes.align ) {
+		containerClasses.push( 'alignfull' );
+	}
+	if ( ! isFullWidth ) {
+		containerClasses.push( 'storymap-map-container--custom-width' );
+	}
 	const storyOptions = [
 		{ label: __( 'Select a Storymap', 'wp-storymap' ), value: 0 },
 		...availableStories.map( ( story ) => ( {
@@ -103,14 +110,14 @@ export default function Edit( { attributes, setAttributes } ) {
 			</InspectorControls>
 			<div
 				{ ...useBlockProps( {
-					className: `storymap-map-container${
-						isFullWidth && ! attributes.align ? ' alignfull' : ''
-					}`,
+					className: containerClasses.join( ' ' ),
 					ref: containerRef,
 					'data-story-number': attributes.storyNumber || 0,
 					style: {
 						height: `${ height }px`,
-						...( isFullWidth ? {} : { width: `${ width }px` } ),
+						...( isFullWidth
+							? {}
+							: { width: `${ width }px`, maxWidth: 'none' } ),
 					},
 					role: 'region',
 					'aria-label': __( 'OpenStreetMap map', 'wp-storymap' ),
