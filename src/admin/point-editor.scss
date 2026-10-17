@@ -1,0 +1,39 @@
+.wp-storymap-point-map {
+	width: min(100%, 900px);
+	height: 420px;
+	border: 1px solid #8c8f94;
+}
+
+.wp-storymap-point-coordinates {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.wp-storymap-point-coordinates input {
+	width: 150px;
+}
+
+#wp-storymap-point-image-preview img {
+	display: block;
+	max-width: 240px;
+	max-height: 180px;
+	margin-bottom: 12px;
+}
+
+.wp-storymap-point-location-icon {
+	display: grid;
+	place-items: center;
+	border: 0;
+}
+
+.wp-storymap-point-location-icon span {
+	width: 18px;
+	height: 18px;
+	border: 3px solid #fff;
+	border-radius: 50%;
+	background: #d63638;
+	box-shadow: 0 1px 5px rgb(0 0 0 / 50%);
+}
