@@ -104,6 +104,7 @@ if ( $story_number > 0 ) {
 						'title'      => sanitize_text_field( $point['name'] ),
 						'description'=> sanitize_textarea_field( $point['description'] ),
 						'image'      => esc_url_raw( $point['image'] ),
+						'color'      => wp_storymap_get_point_marker_color( (int) $point['id'] ),
 					);
 				},
 				$points

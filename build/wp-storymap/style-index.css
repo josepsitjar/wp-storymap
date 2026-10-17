@@ -56,28 +56,25 @@
   height: 44px;
   padding: 0;
   place-items: center;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  border: 0;
+  background: transparent;
   cursor: pointer;
   pointer-events: auto;
 }
 
 .storymap-navigation-button::before {
-  width: 12px;
-  height: 12px;
-  border: solid #222;
-  border-width: 0 2px 2px 0;
-  content: "";
+  color: #222;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .storymap-navigation-previous::before {
-  transform: rotate(135deg);
+  content: "«";
 }
 
 .storymap-navigation-next::before {
-  transform: rotate(-45deg);
+  content: "»";
 }
 
 .storymap-navigation-button:disabled {
@@ -142,7 +139,7 @@
   max-width: 100%;
   height: auto;
   margin-bottom: 0.5rem;
-  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 3px 3px 3px rgba(0, 0, 0, 0.45);
 }
 
 .storymap-point-info-description {

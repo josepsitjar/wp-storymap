@@ -37,7 +37,7 @@ function getInfoPanelPadding( map ) {
 
 	if ( mapContainer.clientWidth > 680 ) {
 		return {
-			right: Math.min( 360, mapContainer.clientWidth * 0.38 ),
+			right: Math.min( 720, mapContainer.clientWidth * 0.76 ),
 		};
 	}
 
@@ -47,8 +47,12 @@ function getInfoPanelPadding( map ) {
 }
 
 class StorymapOverviewControl {
-	constructor( coordinates ) {
-		this.coordinates = coordinates;
+	constructor( points ) {
+		this.points = points;
+		this.coordinates = points.map( ( point ) => [
+			point.longitude,
+			point.latitude,
+		] );
 	}
 
 	onAdd() {
@@ -102,12 +106,14 @@ class StorymapOverviewControl {
 				type: 'geojson',
 				data: {
 					type: 'FeatureCollection',
-					features: this.coordinates.map( ( coordinate ) => ( {
+					features: this.points.map( ( point ) => ( {
 						type: 'Feature',
-						properties: {},
+						properties: {
+							color: point.color || '#3FB1CE',
+						},
 						geometry: {
 							type: 'Point',
-							coordinates: coordinate,
+							coordinates: [ point.longitude, point.latitude ],
 						},
 					} ) ),
 				},
@@ -118,7 +124,7 @@ class StorymapOverviewControl {
 				source: 'storymap-overview-points',
 				paint: {
 					'circle-radius': 4,
-					'circle-color': '#e53935',
+					'circle-color': [ 'get', 'color' ],
 					'circle-stroke-color': '#ffffff',
 					'circle-stroke-width': 1,
 				},
@@ -299,7 +305,7 @@ function createPointInfoPanel( map, container, intro ) {
 			'storymap-point-info--desktop'
 		);
 		if ( mapBounds.width > 680 ) {
-			const panelWidth = Math.min( 360, mapBounds.width * 0.38 );
+			const panelWidth = Math.min( 720, mapBounds.width * 0.76 );
 			container.style.setProperty(
 				'--storymap-panel-width',
 				`${ panelWidth }px`
@@ -474,7 +480,7 @@ export default function createStorymapMap( container ) {
 	);
 
 	points.forEach( ( point, index ) => {
-		const marker = new Marker()
+		const marker = new Marker( { color: point.color || '#3FB1CE' } )
 			.setLngLat( [ point.longitude, point.latitude ] )
 			.addTo( map );
 		marker.getElement().addEventListener( 'click', () => {
@@ -513,10 +519,7 @@ export default function createStorymapMap( container ) {
 	}
 
 	if ( coordinates.length ) {
-		map.addControl(
-			new StorymapOverviewControl( coordinates ),
-			'bottom-left'
-		);
+		map.addControl( new StorymapOverviewControl( points ), 'bottom-left' );
 		container.append( navigationControl.onAdd( map ) );
 
 		map.once( 'load', () => {

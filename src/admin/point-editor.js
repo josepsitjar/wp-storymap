@@ -5,6 +5,33 @@ import './point-editor.scss';
 const mapElement = document.getElementById( 'wp-storymap-point-map' );
 
 if ( mapElement ) {
+	const markerColorPicker = document.getElementById(
+		'wp-storymap-point-marker-color'
+	);
+	const markerColorCode = document.getElementById(
+		'wp-storymap-point-marker-color-code'
+	);
+	const setMarkerColor = ( color ) => {
+		markerColorPicker.value = color;
+		markerColorCode.value = color.toUpperCase();
+		mapElement.style.setProperty( '--wp-storymap-marker-color', color );
+	};
+	markerColorPicker.addEventListener( 'input', () =>
+		setMarkerColor( markerColorPicker.value )
+	);
+	markerColorCode.addEventListener( 'input', () => {
+		if ( /^#[0-9A-Fa-f]{6}$/.test( markerColorCode.value ) ) {
+			setMarkerColor( markerColorCode.value );
+		}
+	} );
+	document
+		.querySelectorAll( '.wp-storymap-marker-color-swatch' )
+		.forEach( ( swatch ) => {
+			swatch.addEventListener( 'click', () =>
+				setMarkerColor( swatch.dataset.color )
+			);
+		} );
+
 	const initialLatitude = Number( mapElement.dataset.lat );
 	const initialLongitude = Number( mapElement.dataset.lon );
 	const initialZoom = Number( mapElement.dataset.zoom ) || 2;

@@ -113,6 +113,83 @@ function wp_storymap_get_trashed_point_ids() {
 }
 
 /**
+ * Sanitizes a six-digit HTML hex color.
+ *
+ * @param string $color Color to sanitize.
+ * @return string|false
+ */
+function wp_storymap_sanitize_marker_color( $color ) {
+	if ( ! is_string( $color ) ) {
+		return false;
+	}
+
+	$color = sanitize_hex_color( $color );
+	if ( ! $color ) {
+		return false;
+	}
+
+	if ( 4 === strlen( $color ) ) {
+		$color = '#' . $color[1] . $color[1] . $color[2] . $color[2] . $color[3] . $color[3];
+	}
+
+	return strtoupper( $color );
+}
+
+/**
+ * Gets a point's selected marker color, defaulting to MapLibre's light blue.
+ *
+ * @param int $point_id Point ID.
+ * @return string
+ */
+function wp_storymap_get_point_marker_color( $point_id ) {
+	$colors = get_option( 'wp_storymap_point_colors', array() );
+	if ( ! is_array( $colors ) ) {
+		return '#3FB1CE';
+	}
+
+	$color = isset( $colors[ $point_id ] ) ? wp_storymap_sanitize_marker_color( $colors[ $point_id ] ) : false;
+	return $color ? $color : '#3FB1CE';
+}
+
+/**
+ * Stores a point's marker color without changing the legacy points table.
+ *
+ * @param int    $point_id Point ID.
+ * @param string $color    Sanitized color.
+ * @return bool
+ */
+function wp_storymap_save_point_marker_color( $point_id, $color ) {
+	$colors = get_option( 'wp_storymap_point_colors', array() );
+	if ( ! is_array( $colors ) ) {
+		$colors = array();
+	}
+
+	if ( '#3FB1CE' === $color ) {
+		unset( $colors[ $point_id ] );
+	} else {
+		$colors[ $point_id ] = $color;
+	}
+
+	if ( empty( $colors ) ) {
+		delete_option( 'wp_storymap_point_colors' );
+		return null === get_option( 'wp_storymap_point_colors', null );
+	}
+
+	update_option( 'wp_storymap_point_colors', $colors, false );
+	$saved_colors = get_option( 'wp_storymap_point_colors', array() );
+	if ( ! is_array( $saved_colors ) ) {
+		return false;
+	}
+
+	if ( '#3FB1CE' === $color ) {
+		return ! isset( $saved_colors[ $point_id ] );
+	}
+
+	return isset( $saved_colors[ $point_id ] ) &&
+		$color === $saved_colors[ $point_id ];
+}
+
+/**
  * Redirects to the points list with a status message.
  *
  * @param string $status Status to show.
@@ -643,6 +720,7 @@ function wp_storymap_render_point_admin_page() {
 	$points_table = $wpdb->prefix . 'storymap_pro_points';
 	$editing_point_id = isset( $_GET['point_id'] ) ? absint( wp_unslash( $_GET['point_id'] ) ) : 0;
 	$editing_point = null;
+	$marker_color = '#3FB1CE';
 	$editing_point_failed = false;
 	$points = array();
 	$points_query_failed = false;
@@ -660,6 +738,9 @@ function wp_storymap_render_point_admin_page() {
 			)
 		);
 		$editing_point_failed = (bool) $wpdb->last_error;
+		if ( $editing_point ) {
+			$marker_color = wp_storymap_get_point_marker_color( $editing_point_id );
+		}
 	}
 
 	if ( $points_table_found === $points_table && ! is_wp_error( $stories ) && ! empty( $stories ) ) {
@@ -683,9 +764,9 @@ function wp_storymap_render_point_admin_page() {
 		<?php elseif ( 'updated' === $status ) : ?>
 			<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'The point was updated successfully.', 'wp-storymap' ); ?></p></div>
 		<?php elseif ( 'save_failed' === $status ) : ?>
-			<div class="notice notice-error"><p><?php esc_html_e( 'The point could not be saved. Check that the legacy points table is available and try again.', 'wp-storymap' ); ?></p></div>
+			<div class="notice notice-error"><p><?php esc_html_e( 'The point or its marker color could not be saved. Check that the legacy points table is available and try again.', 'wp-storymap' ); ?></p></div>
 		<?php elseif ( 'invalid' === $status ) : ?>
-			<div class="notice notice-error"><p><?php esc_html_e( 'The point details were invalid. Check the title, location, image, and selected story.', 'wp-storymap' ); ?></p></div>
+			<div class="notice notice-error"><p><?php esc_html_e( 'The point details were invalid. Check the title, marker color, location, image, and selected story.', 'wp-storymap' ); ?></p></div>
 		<?php elseif ( 'no_stories' === $status ) : ?>
 			<div class="notice notice-error"><p><?php esc_html_e( 'The selected legacy story is no longer available. Choose an existing story and try again.', 'wp-storymap' ); ?></p></div>
 		<?php endif; ?>
@@ -737,6 +818,21 @@ function wp_storymap_render_point_admin_page() {
 							<td><textarea id="wp-storymap-point-description" name="description" class="large-text" rows="5" maxlength="10000" required><?php echo esc_textarea( $editing_point ? $editing_point->description : '' ); ?></textarea></td>
 						</tr>
 						<tr>
+							<th scope="row"><label for="wp-storymap-point-marker-color-code"><?php esc_html_e( 'Marker color', 'wp-storymap' ); ?></label></th>
+							<td>
+								<div class="wp-storymap-marker-color-control">
+									<input id="wp-storymap-point-marker-color" type="color" value="<?php echo esc_attr( $marker_color ); ?>" aria-label="<?php esc_attr_e( 'Choose marker color', 'wp-storymap' ); ?>">
+									<input id="wp-storymap-point-marker-color-code" name="marker_color" type="text" value="<?php echo esc_attr( $marker_color ); ?>" pattern="#[0-9A-Fa-f]{6}" maxlength="7" class="regular-text" required aria-describedby="wp-storymap-marker-color-description">
+								</div>
+								<div class="wp-storymap-marker-color-palette" role="group" aria-label="<?php esc_attr_e( 'Basic marker colors', 'wp-storymap' ); ?>">
+									<?php foreach ( array( '#3FB1CE', '#E53935', '#FF9800', '#4CAF50', '#9C27B0', '#FFC107', '#2196F3', '#333333' ) as $palette_color ) : ?>
+										<button type="button" class="wp-storymap-marker-color-swatch" data-color="<?php echo esc_attr( $palette_color ); ?>" style="--wp-storymap-swatch-color:<?php echo esc_attr( $palette_color ); ?>" aria-label="<?php echo esc_attr( sprintf( __( 'Select marker color %s', 'wp-storymap' ), $palette_color ) ); ?>"></button>
+									<?php endforeach; ?>
+								</div>
+								<p id="wp-storymap-marker-color-description" class="description"><?php esc_html_e( 'Choose a basic color or enter a six-digit HTML hex color code. The default is blue.', 'wp-storymap' ); ?></p>
+							</td>
+						</tr>
+						<tr>
 							<th scope="row"><?php esc_html_e( 'Location', 'wp-storymap' ); ?></th>
 							<td>
 								<p><?php esc_html_e( 'Click the map to place the point, or drag its marker to adjust the location.', 'wp-storymap' ); ?></p>
@@ -746,6 +842,7 @@ function wp_storymap_render_point_admin_page() {
 									data-lat="<?php echo esc_attr( $editing_point ? $editing_point->lat : '' ); ?>"
 									data-lon="<?php echo esc_attr( $editing_point ? $editing_point->lon : '' ); ?>"
 									data-zoom="<?php echo esc_attr( $editing_point ? $editing_point->zoom : 2 ); ?>"
+									style="--wp-storymap-marker-color:<?php echo esc_attr( $marker_color ); ?>"
 									role="region"
 									aria-label="<?php esc_attr_e( 'Choose point location on map', 'wp-storymap' ); ?>"
 								></div>
@@ -829,6 +926,7 @@ function wp_storymap_save_point() {
 	$zoom = isset( $_POST['zoom'] ) ? (int) wp_unslash( $_POST['zoom'] ) : -1;
 	$image_id = isset( $_POST['image_id'] ) ? absint( $_POST['image_id'] ) : 0;
 	$image_url_input = isset( $_POST['image_url'] ) ? esc_url_raw( wp_unslash( $_POST['image_url'] ) ) : '';
+	$marker_color = isset( $_POST['marker_color'] ) ? wp_storymap_sanitize_marker_color( wp_unslash( $_POST['marker_color'] ) ) : false;
 
 	$stories_table_found = $wpdb->get_var(
 		$wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $stories_table ) )
@@ -904,6 +1002,7 @@ function wp_storymap_save_point() {
 		$longitude > 180 ||
 		$zoom < 0 ||
 		$zoom > 20 ||
+		! $marker_color ||
 		( ! $existing_point && ! $image_url ) ||
 		( $image_url && strlen( $image_url ) > 500 )
 	) {
@@ -969,7 +1068,13 @@ function wp_storymap_save_point() {
 		error_log( 'WP Storymap could not save a point to the legacy points table: ' . $wpdb->last_error );
 		$status = 'save_failed';
 	} else {
-		$status = $existing_point ? 'updated' : 'saved';
+		$saved_point_id = $existing_point ? $point_id : (int) $wpdb->insert_id;
+		if ( ! $saved_point_id || ! wp_storymap_save_point_marker_color( $saved_point_id, $marker_color ) ) {
+			error_log( 'WP Storymap could not save the selected marker color for point ' . $saved_point_id . '.' );
+			$status = 'save_failed';
+		} else {
+			$status = $existing_point ? 'updated' : 'saved';
+		}
 	}
 
 	wp_storymap_redirect_point_status( $status, $point_id );
