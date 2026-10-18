@@ -109,15 +109,10 @@ function StorymapDocumentSettings() {
 						value: 'satellite',
 					},
 					{ label: __( 'Hybrid', 'wp-storymap' ), value: 'hybrid' },
-					{ label: __( 'Dark map', 'wp-storymap' ), value: 'osm_bw' },
 					{ label: __( 'Relief', 'wp-storymap' ), value: 'relief' },
 					{
 						label: __( 'Cycling map', 'wp-storymap' ),
 						value: 'cyclemap',
-					},
-					{
-						label: __( 'Watercolor', 'wp-storymap' ),
-						value: 'watercolor',
 					},
 					{
 						label: __( 'World Street Map', 'wp-storymap' ),

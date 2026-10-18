@@ -34,6 +34,37 @@ if ( $story_number ) {
 $post_id = $story_post_id ? $story_post_id : $current_post_id;
 $height  = (int) get_post_meta( $post_id, 'wp_storymap_height', true );
 $width   = (int) get_post_meta( $post_id, 'wp_storymap_width', true );
+$basemap = get_post_meta( $post_id, 'wp_storymap_basemap', true );
+if ( ! is_string( $basemap ) || '' === $basemap ) {
+	$basemap = 'osm';
+	if ( $story_number > 0 ) {
+		global $wpdb;
+
+		$stories_table = wp_storymap_legacy_stories_table();
+		$table_found = $wpdb->get_var(
+			$wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $stories_table ) )
+		);
+		if ( $wpdb->last_error ) {
+			error_log( 'WP Storymap could not check the legacy stories table for a basemap: ' . $wpdb->last_error );
+		} elseif ( $table_found === $stories_table ) {
+			$legacy_basemap = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT basemap FROM {$stories_table} WHERE storyNumber = %d LIMIT 1",
+					$story_number
+				)
+			);
+			if ( $wpdb->last_error ) {
+				error_log( 'WP Storymap could not load the legacy story basemap: ' . $wpdb->last_error );
+			} elseif ( is_string( $legacy_basemap ) && '' !== $legacy_basemap ) {
+				$basemap = $legacy_basemap;
+			}
+		}
+	}
+}
+$supported_basemaps = array( 'osm', 'satellite', 'hybrid', 'relief', 'cyclemap', 'worldstreetmap' );
+if ( ! in_array( $basemap, $supported_basemaps, true ) ) {
+	$basemap = 'osm';
+}
 $story_image_id = absint( get_post_meta( $post_id, 'wp_storymap_image', true ) );
 $story_image_url = $story_image_id ? wp_get_attachment_image_url( $story_image_id, 'large' ) : '';
 $story_intro = array(
@@ -130,6 +161,7 @@ echo '<div ' . get_block_wrapper_attributes(
 		'class'             => $class,
 		'style'             => $style,
 		'data-storymap-map' => 'true',
+		'data-storymap-basemap' => $basemap,
 		'data-storymap-points' => wp_json_encode( $points ),
 		'data-storymap-intro' => wp_json_encode( $story_intro ),
 		'role'             => 'region',

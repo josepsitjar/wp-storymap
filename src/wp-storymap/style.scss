@@ -33,6 +33,16 @@
 	height: 100%;
 }
 
+.storymap-overview-point-marker {
+	display: block;
+	width: 12px;
+	height: 12px;
+	box-sizing: border-box;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	box-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+}
+
 .storymap-navigation-control {
 	position: absolute;
 	inset: 0;

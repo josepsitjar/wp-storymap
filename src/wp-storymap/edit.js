@@ -9,7 +9,7 @@ import './editor.scss';
 export default function Edit( { attributes, setAttributes } ) {
 	const containerRef = useRef( null );
 	const mapRef = useRef( null );
-	const { stories, isResolving } = useSelect( ( select ) => {
+	const { stories, isResolving, currentStory } = useSelect( ( select ) => {
 		const query = {
 			per_page: 100,
 			orderby: 'title',
@@ -18,9 +18,21 @@ export default function Edit( { attributes, setAttributes } ) {
 			_fields: 'id,title,meta',
 		};
 		const core = select( 'core' );
+		const editor = select( 'core/editor' );
+		const postType = editor.getCurrentPostType();
+		const postId = editor.getCurrentPostId();
 
 		return {
 			stories: core.getEntityRecords( 'postType', 'wp_storymap', query ),
+			currentPostType: postType,
+			currentStory:
+				postType === 'wp_storymap'
+					? core.getEditedEntityRecord(
+							'postType',
+							'wp_storymap',
+							postId
+						)
+					: null,
 			isResolving: core.isResolving( 'core', 'getEntityRecords', [
 				'postType',
 				'wp_storymap',
@@ -36,9 +48,26 @@ export default function Edit( { attributes, setAttributes } ) {
 			Number( story.meta.wp_storymap_story_number ) ===
 			Number( attributes.storyNumber )
 	);
-	const storyMeta = selectedStory?.meta || {};
+	const selectedStoryId = selectedStory?.id;
+	const selectedStoryRecord = useSelect(
+		( select ) =>
+			selectedStoryId
+				? select( 'core' ).getEditedEntityRecord(
+						'postType',
+						'wp_storymap',
+						selectedStoryId
+					)
+				: null,
+		[ selectedStoryId ]
+	);
+	const storyMeta =
+		selectedStoryRecord?.meta ||
+		selectedStory?.meta ||
+		( attributes.storyNumber ? {} : currentStory?.meta ) ||
+		{};
 	const height = Math.max( 1, Number( storyMeta.wp_storymap_height ) || 500 );
 	const width = Math.max( 0, Number( storyMeta.wp_storymap_width ) || 0 );
+	const basemap = storyMeta.wp_storymap_basemap || 'osm';
 	const isFullWidth = width === 0;
 	const containerClasses = [ 'storymap-map-container' ];
 	if ( isFullWidth && ! attributes.align ) {
@@ -71,7 +100,7 @@ export default function Edit( { attributes, setAttributes } ) {
 			mapRef.current?.remove();
 			mapRef.current = null;
 		};
-	}, [] );
+	}, [ basemap ] );
 
 	useEffect( () => {
 		mapRef.current?.resize();
@@ -113,6 +142,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					className: containerClasses.join( ' ' ),
 					ref: containerRef,
 					'data-story-number': attributes.storyNumber || 0,
+					'data-storymap-basemap': basemap,
 					style: {
 						height: `${ height }px`,
 						...( isFullWidth

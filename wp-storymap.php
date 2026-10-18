@@ -20,6 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'WP_STORYMAP_PLUGIN_FILE', __FILE__ );
 require_once __DIR__ . '/includes/story-records.php';
 require_once __DIR__ . '/includes/point-admin.php';
+require_once __DIR__ . '/includes/upgrade-notice.php';
 
 /**
  * Registers the block(s) metadata from the `blocks-manifest.php` and registers the block type(s)
@@ -115,7 +116,7 @@ function wp_storymap_register_story_meta() {
 				'show_in_rest' => array(
 					'schema' => array(
 						'type' => 'string',
-						'enum' => array( 'osm', 'satellite', 'hybrid', 'osm_bw', 'relief', 'cyclemap', 'watercolor', 'worldstreetmap' ),
+						'enum' => array( 'osm', 'satellite', 'hybrid', 'relief', 'cyclemap', 'worldstreetmap' ),
 					),
 				),
 			)

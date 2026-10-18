@@ -12,25 +12,101 @@ config.WORKER_URL = new URL(
 	import.meta.url
 ).href;
 
-const OSM_STYLE = {
-	version: 8,
-	sources: {
-		openstreetmap: {
-			type: 'raster',
+const BASEMAP_LAYERS = {
+	osm: [
+		{
+			id: 'openstreetmap',
 			tiles: [ 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' ],
-			tileSize: 256,
 			attribution:
 				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 		},
-	},
-	layers: [
+	],
+	satellite: [
 		{
-			id: 'openstreetmap',
-			type: 'raster',
-			source: 'openstreetmap',
+			id: 'satellite',
+			tiles: [
+				'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+			],
+			attribution:
+				'Tiles &copy; <a href="https://www.esri.com/">Esri</a> and its contributors',
+		},
+	],
+	hybrid: [
+		{
+			id: 'satellite',
+			tiles: [
+				'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+			],
+			attribution:
+				'Tiles &copy; <a href="https://www.esri.com/">Esri</a> and its contributors',
+		},
+		{
+			id: 'hybrid-labels',
+			tiles: [
+				'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+			],
+			attribution:
+				'Labels &copy; <a href="https://www.esri.com/">Esri</a>',
+		},
+	],
+	relief: [
+		{
+			id: 'relief',
+			tiles: [ 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png' ],
+			attribution:
+				'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Map style &copy; <a href="https://opentopomap.org/">OpenTopoMap</a>',
+		},
+	],
+	cyclemap: [
+		{
+			id: 'cyclemap',
+			tiles: [
+				'https://a.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png',
+			],
+			attribution:
+				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | <a href="https://www.cyclosm.org/">CyclOSM</a>',
+		},
+	],
+	worldstreetmap: [
+		{
+			id: 'world-street-map',
+			tiles: [
+				'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+			],
+			attribution:
+				'Tiles &copy; <a href="https://www.esri.com/">Esri</a> and its contributors',
 		},
 	],
 };
+
+function getBasemapStyle( basemap ) {
+	const layers = Object.prototype.hasOwnProperty.call(
+		BASEMAP_LAYERS,
+		basemap
+	)
+		? BASEMAP_LAYERS[ basemap ]
+		: BASEMAP_LAYERS.osm;
+
+	return {
+		version: 8,
+		sources: Object.fromEntries(
+			layers.map( ( layer ) => [
+				layer.id,
+				{
+					type: 'raster',
+					tiles: layer.tiles,
+					tileSize: 256,
+					attribution: layer.attribution,
+				},
+			] )
+		),
+		layers: layers.map( ( layer ) => ( {
+			id: layer.id,
+			type: 'raster',
+			source: layer.id,
+		} ) ),
+	};
+}
 
 function getInfoPanelPadding( map ) {
 	const mapContainer = map.getContainer();
@@ -88,7 +164,7 @@ class StorymapOverviewControl {
 
 		this.overviewMap = new MapLibreMap( {
 			container: mapContainer,
-			style: OSM_STYLE,
+			style: getBasemapStyle( 'osm' ),
 			center: this.coordinates[ 0 ],
 			zoom: 2,
 			interactive: false,
@@ -120,32 +196,18 @@ class StorymapOverviewControl {
 				} );
 			}
 
-			this.overviewMap.addSource( 'storymap-overview-points', {
-				type: 'geojson',
-				data: {
-					type: 'FeatureCollection',
-					features: this.points.map( ( point ) => ( {
-						type: 'Feature',
-						properties: {
-							color: point.color || '#3FB1CE',
-						},
-						geometry: {
-							type: 'Point',
-							coordinates: [ point.longitude, point.latitude ],
-						},
-					} ) ),
-				},
-			} );
-			this.overviewMap.addLayer( {
-				id: 'storymap-overview-points',
-				type: 'circle',
-				source: 'storymap-overview-points',
-				paint: {
-					'circle-radius': 4,
-					'circle-color': [ 'get', 'color' ],
-					'circle-stroke-color': '#ffffff',
-					'circle-stroke-width': 1,
-				},
+			this.points.forEach( ( point ) => {
+				const markerElement = document.createElement( 'span' );
+				markerElement.className = 'storymap-overview-point-marker';
+				markerElement.style.backgroundColor = point.color || '#3FB1CE';
+				markerElement.setAttribute( 'aria-hidden', 'true' );
+
+				new Marker( {
+					element: markerElement,
+					anchor: 'center',
+				} )
+					.setLngLat( [ point.longitude, point.latitude ] )
+					.addTo( this.overviewMap );
 			} );
 
 			if ( this.coordinates.length === 1 ) {
@@ -621,9 +683,10 @@ function createPointInfoPanel( map, container, intro, points ) {
 }
 
 export default function createStorymapMap( container ) {
+	const basemap = container.dataset.storymapBasemap || 'osm';
 	const map = new MapLibreMap( {
 		container,
-		style: OSM_STYLE,
+		style: getBasemapStyle( basemap ),
 		center: [ 0, 0 ],
 		zoom: 2,
 	} );
