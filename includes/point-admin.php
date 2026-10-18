@@ -24,6 +24,8 @@ function wp_storymap_register_point_admin_page() {
 				return;
 			}
 
+			wp_enqueue_script( 'list-table' );
+
 			$asset_path  = __DIR__ . '/../build/admin/point-list.asset.php';
 			$script_path = __DIR__ . '/../build/admin/point-list.js';
 			if ( ! file_exists( $asset_path ) || ! file_exists( $script_path ) ) {
@@ -239,7 +241,7 @@ function wp_storymap_trash_point() {
 		wp_storymap_redirect_points_list( 'action_failed' );
 	}
 
-	wp_storymap_redirect_points_list( 'trashed', 'trash' );
+	wp_storymap_redirect_points_list( 'trashed', 'all' );
 }
 add_action( 'admin_post_wp_storymap_trash_point', 'wp_storymap_trash_point' );
 
@@ -268,6 +270,74 @@ function wp_storymap_restore_point() {
 	wp_storymap_redirect_points_list( 'restored', 'all' );
 }
 add_action( 'admin_post_wp_storymap_restore_point', 'wp_storymap_restore_point' );
+
+/**
+ * Applies a bulk trash or restore action to selected points.
+ */
+function wp_storymap_bulk_manage_points() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You are not allowed to manage Storymap points.', 'wp-storymap' ) );
+	}
+
+	check_admin_referer( 'wp_storymap_bulk_manage_points' );
+
+	$action = isset( $_POST['bulk_action_top'] ) ? sanitize_key( wp_unslash( $_POST['bulk_action_top'] ) ) : '';
+	if ( '' === $action && isset( $_POST['bulk_action_bottom'] ) ) {
+		$action = sanitize_key( wp_unslash( $_POST['bulk_action_bottom'] ) );
+	}
+	$point_ids = isset( $_POST['point_ids'] ) && is_array( $_POST['point_ids'] )
+		? array_values( array_unique( array_filter( array_map( 'absint', wp_unslash( $_POST['point_ids'] ) ) ) ) )
+		: array();
+
+	if ( ! in_array( $action, array( 'trash', 'restore' ), true ) || empty( $point_ids ) || count( $point_ids ) > 20 ) {
+		wp_storymap_redirect_points_list( 'action_failed' );
+	}
+
+	global $wpdb;
+	$points_table = $wpdb->prefix . 'storymap_pro_points';
+	$placeholders = implode( ',', array_fill( 0, count( $point_ids ), '%d' ) );
+	$existing_ids = $wpdb->get_col(
+		$wpdb->prepare(
+			"SELECT id FROM {$points_table} WHERE id IN ({$placeholders})",
+			$point_ids
+		)
+	);
+	if ( $wpdb->last_error ) {
+		error_log( 'WP Storymap could not load points for a bulk action: ' . $wpdb->last_error );
+		wp_storymap_redirect_points_list( 'action_failed' );
+	}
+	if ( empty( $existing_ids ) ) {
+		wp_storymap_redirect_points_list( 'action_failed' );
+	}
+
+	$trashed_ids = wp_storymap_get_trashed_point_ids();
+	if ( 'trash' === $action ) {
+		$ids_to_trash = array_diff( array_map( 'intval', $existing_ids ), $trashed_ids );
+		$trashed_ids  = array_values( array_unique( array_merge( $trashed_ids, $ids_to_trash ) ) );
+		$updated      = update_option( 'wp_storymap_trashed_point_ids', $trashed_ids, false );
+		if ( ! $updated && array_diff( $ids_to_trash, wp_storymap_get_trashed_point_ids() ) ) {
+			error_log( 'WP Storymap could not move the selected points to trash.' );
+			wp_storymap_redirect_points_list( 'action_failed' );
+		}
+
+		wp_storymap_redirect_points_list( 'trashed', 'all' );
+	}
+
+	$ids_to_restore = array_intersect( array_map( 'intval', $existing_ids ), $trashed_ids );
+	if ( empty( $ids_to_restore ) ) {
+		wp_storymap_redirect_points_list( 'action_failed', 'trash' );
+	}
+
+	$remaining_trashed_ids = array_values( array_diff( $trashed_ids, $ids_to_restore ) );
+	$updated                = update_option( 'wp_storymap_trashed_point_ids', $remaining_trashed_ids, false );
+	if ( ! $updated && array_diff( $ids_to_restore, wp_storymap_get_trashed_point_ids() ) ) {
+		error_log( 'WP Storymap could not restore the selected points from trash.' );
+		wp_storymap_redirect_points_list( 'action_failed', 'trash' );
+	}
+
+	wp_storymap_redirect_points_list( 'restored', 'all' );
+}
+add_action( 'admin_post_wp_storymap_bulk_manage_points', 'wp_storymap_bulk_manage_points' );
 
 /**
  * Updates quick-editable point fields without leaving the points list.
@@ -450,9 +520,9 @@ function wp_storymap_render_points_admin_page() {
 		<hr class="wp-header-end">
 
 		<?php if ( 'trashed' === $status ) : ?>
-			<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'The point was moved to the trash.', 'wp-storymap' ); ?></p></div>
+			<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'The selected point or points were moved to the trash.', 'wp-storymap' ); ?></p></div>
 		<?php elseif ( 'restored' === $status ) : ?>
-			<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'The point was restored.', 'wp-storymap' ); ?></p></div>
+			<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'The selected point or points were restored.', 'wp-storymap' ); ?></p></div>
 		<?php elseif ( 'quick_updated' === $status ) : ?>
 			<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'The point was updated.', 'wp-storymap' ); ?></p></div>
 		<?php elseif ( 'action_failed' === $status ) : ?>
@@ -489,10 +559,32 @@ function wp_storymap_render_points_admin_page() {
 		<?php elseif ( empty( $points ) ) : ?>
 			<p><?php echo 'trash' === $point_view ? esc_html__( 'The trash is empty.', 'wp-storymap' ) : esc_html__( 'No points have been added yet.', 'wp-storymap' ); ?></p>
 		<?php else : ?>
+			<form id="wp-storymap-bulk-point-actions" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="wp_storymap_bulk_manage_points">
+				<?php wp_nonce_field( 'wp_storymap_bulk_manage_points' ); ?>
+			</form>
+			<div class="tablenav top">
+				<div class="alignleft actions bulkactions">
+					<label for="wp-storymap-bulk-action-top" class="screen-reader-text"><?php esc_html_e( 'Select bulk action', 'wp-storymap' ); ?></label>
+					<select id="wp-storymap-bulk-action-top" name="bulk_action_top" form="wp-storymap-bulk-point-actions">
+						<option value=""><?php esc_html_e( 'Bulk actions', 'wp-storymap' ); ?></option>
+						<?php if ( 'trash' === $point_view ) : ?>
+							<option value="restore"><?php esc_html_e( 'Restore', 'wp-storymap' ); ?></option>
+						<?php else : ?>
+							<option value="trash"><?php esc_html_e( 'Move to Trash', 'wp-storymap' ); ?></option>
+						<?php endif; ?>
+					</select>
+					<?php submit_button( __( 'Apply', 'wp-storymap' ), 'action', 'apply_top', false, array( 'form' => 'wp-storymap-bulk-point-actions' ) ); ?>
+				</div>
+				<br class="clear">
+			</div>
 			<p><?php echo esc_html( sprintf( _n( '%s point', '%s points', $total_points, 'wp-storymap' ), number_format_i18n( $total_points ) ) ); ?></p>
-			<table class="widefat fixed striped">
+			<table class="wp-list-table widefat fixed striped">
 				<thead>
 					<tr>
+						<td class="check-column">
+							<input id="cb-select-all-1" type="checkbox">
+						</td>
 						<th scope="col"><?php esc_html_e( 'Point', 'wp-storymap' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Story', 'wp-storymap' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Coordinates', 'wp-storymap' ); ?></th>
@@ -500,9 +592,12 @@ function wp_storymap_render_points_admin_page() {
 						<th scope="col"><?php esc_html_e( 'Image', 'wp-storymap' ); ?></th>
 					</tr>
 				</thead>
-				<tbody>
+				<tbody id="the-list">
 					<?php foreach ( $points as $point ) : ?>
 						<tr>
+							<th scope="row" class="check-column">
+								<input type="checkbox" name="point_ids[]" value="<?php echo esc_attr( $point->id ); ?>" form="wp-storymap-bulk-point-actions" aria-label="<?php echo esc_attr( sprintf( __( 'Select point: %s', 'wp-storymap' ), $point->name ) ); ?>">
+							</th>
 							<td>
 								<strong><?php echo esc_html( $point->name ); ?></strong>
 								<div class="description"><?php echo esc_html( sprintf( __( 'Point %d', 'wp-storymap' ), $point->num ) ); ?></div>
@@ -539,7 +634,7 @@ function wp_storymap_render_points_admin_page() {
 									<?php endif; ?>
 								</div>
 							</td>
-							<td><?php echo esc_html( sprintf( '%1$s — %2$s', $point->storyId, $point->story_name ? $point->story_name : __( 'Story unavailable', 'wp-storymap' ) ) ); ?></td>
+							<td><?php echo esc_html( $point->story_name ? $point->story_name : __( 'Story unavailable', 'wp-storymap' ) ); ?></td>
 							<td><?php echo esc_html( $point->lat . ', ' . $point->lon ); ?></td>
 							<td><?php echo esc_html( wp_trim_words( $point->description, 20 ) ); ?></td>
 							<td>
@@ -555,7 +650,7 @@ function wp_storymap_render_points_admin_page() {
 								id="wp-storymap-point-quick-edit-<?php echo esc_attr( $point->id ); ?>"
 								class="inline-edit-row inline-edit-row-post quick-edit-row hidden wp-storymap-point-quick-edit-row"
 							>
-								<td colspan="5">
+								<td colspan="6">
 									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 										<input type="hidden" name="action" value="wp_storymap_quick_edit_point">
 										<input type="hidden" name="point_id" value="<?php echo esc_attr( $point->id ); ?>">
@@ -573,7 +668,7 @@ function wp_storymap_render_points_admin_page() {
 													<select name="story_number" required>
 														<?php foreach ( $quick_edit_stories as $story ) : ?>
 															<option value="<?php echo esc_attr( $story->storyNumber ); ?>" <?php selected( $point->storyId, $story->storyNumber ); ?>>
-																<?php echo esc_html( sprintf( '%1$s — %2$s', $story->storyNumber, $story->name ) ); ?>
+																<?php echo esc_html( $story->name ); ?>
 															</option>
 														<?php endforeach; ?>
 													</select>
@@ -598,13 +693,37 @@ function wp_storymap_render_points_admin_page() {
 						<?php endif; ?>
 					<?php endforeach; ?>
 				</tbody>
+				<tfoot>
+					<tr>
+						<td class="check-column">
+							<input id="cb-select-all-2" type="checkbox">
+						</td>
+						<th scope="col"><?php esc_html_e( 'Point', 'wp-storymap' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Story', 'wp-storymap' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Coordinates', 'wp-storymap' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Description', 'wp-storymap' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Image', 'wp-storymap' ); ?></th>
+					</tr>
+				</tfoot>
 			</table>
 			<?php
 			$total_pages = (int) ceil( $total_points / $per_page );
-			if ( $total_pages > 1 ) :
-				?>
+			?>
 				<div class="tablenav">
+					<div class="alignleft actions bulkactions">
+						<label for="wp-storymap-bulk-action-bottom" class="screen-reader-text"><?php esc_html_e( 'Select bulk action', 'wp-storymap' ); ?></label>
+						<select id="wp-storymap-bulk-action-bottom" name="bulk_action_bottom" form="wp-storymap-bulk-point-actions">
+							<option value=""><?php esc_html_e( 'Bulk actions', 'wp-storymap' ); ?></option>
+							<?php if ( 'trash' === $point_view ) : ?>
+								<option value="restore"><?php esc_html_e( 'Restore', 'wp-storymap' ); ?></option>
+							<?php else : ?>
+								<option value="trash"><?php esc_html_e( 'Move to Trash', 'wp-storymap' ); ?></option>
+							<?php endif; ?>
+						</select>
+						<?php submit_button( __( 'Apply', 'wp-storymap' ), 'action', 'apply_bottom', false, array( 'form' => 'wp-storymap-bulk-point-actions' ) ); ?>
+					</div>
 					<div class="tablenav-pages">
+						<?php if ( $total_pages > 1 ) : ?>
 						<?php
 						echo wp_kses_post(
 							paginate_links(
@@ -619,9 +738,10 @@ function wp_storymap_render_points_admin_page() {
 							)
 						);
 						?>
+						<?php endif; ?>
 					</div>
+					<br class="clear">
 				</div>
-			<?php endif; ?>
 		<?php endif; ?>
 	</div>
 	<?php
@@ -802,11 +922,11 @@ function wp_storymap_render_point_admin_page() {
 									<option value=""><?php esc_html_e( 'Select a Storymap', 'wp-storymap' ); ?></option>
 									<?php foreach ( $stories as $story ) : ?>
 										<option value="<?php echo esc_attr( $story->storyNumber ); ?>" <?php selected( $editing_point ? $editing_point->storyId : 0, $story->storyNumber ); ?>>
-											<?php echo esc_html( sprintf( '%1$s — %2$s', $story->storyNumber, $story->name ) ); ?>
+											<?php echo esc_html( $story->name ); ?>
 										</option>
 									<?php endforeach; ?>
 								</select>
-								<p class="description"><?php esc_html_e( 'The selected Storymap’s independent story number is saved in the legacy storyId field.', 'wp-storymap' ); ?></p>
+								<p class="description"><?php esc_html_e( 'The selected Storymap will be assigned to this point.', 'wp-storymap' ); ?></p>
 							</td>
 						</tr>
 						<tr>
@@ -893,7 +1013,7 @@ function wp_storymap_render_point_admin_page() {
 					<?php foreach ( $points as $point ) : ?>
 						<tr>
 							<td><?php echo esc_html( $point->name ); ?></td>
-							<td><?php echo esc_html( sprintf( '%1$s — %2$s', $point->storyId, $point->story_name ? $point->story_name : __( 'Story unavailable', 'wp-storymap' ) ) ); ?></td>
+							<td><?php echo esc_html( $point->story_name ? $point->story_name : __( 'Story unavailable', 'wp-storymap' ) ); ?></td>
 							<td><?php echo esc_html( $point->lat . ', ' . $point->lon ); ?></td>
 						</tr>
 					<?php endforeach; ?>
