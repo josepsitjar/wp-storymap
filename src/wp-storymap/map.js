@@ -555,6 +555,8 @@ function createPointInfoPanel( map, container, intro, points ) {
 
 	let activeIndex = -1;
 	let lastScrollTop = panel.scrollTop;
+	let isProgrammaticScroll = false;
+	let programmaticScrollTimer;
 	let onActiveIndexChange = () => {};
 	const setActiveSection = ( index, direction ) => {
 		if ( index < -1 || index >= sections.length - 1 ) {
@@ -586,6 +588,12 @@ function createPointInfoPanel( map, container, intro, points ) {
 			0,
 			panel.scrollTop + titleTop - panelTop - titleOffset
 		);
+		isProgrammaticScroll = true;
+		window.clearTimeout( programmaticScrollTimer );
+		programmaticScrollTimer = window.setTimeout( () => {
+			isProgrammaticScroll = false;
+			lastScrollTop = panel.scrollTop;
+		}, 250 );
 		panel.scrollTo( {
 			top: targetTop,
 			behavior: window.matchMedia( '(prefers-reduced-motion: reduce)' )
@@ -596,9 +604,22 @@ function createPointInfoPanel( map, container, intro, points ) {
 		return section;
 	};
 
+	panel.addEventListener( 'scrollend', () => {
+		window.clearTimeout( programmaticScrollTimer );
+		isProgrammaticScroll = false;
+		lastScrollTop = panel.scrollTop;
+	} );
+
 	let scrollFrame = 0;
 	panel.addEventListener( 'scroll', () => {
 		updateScrollbar();
+		if ( isProgrammaticScroll ) {
+			window.clearTimeout( programmaticScrollTimer );
+			programmaticScrollTimer = window.setTimeout( () => {
+				isProgrammaticScroll = false;
+				lastScrollTop = panel.scrollTop;
+			}, 250 );
+		}
 		if ( scrollFrame ) {
 			return;
 		}
@@ -607,6 +628,10 @@ function createPointInfoPanel( map, container, intro, points ) {
 			scrollFrame = 0;
 			const scrollTop = panel.scrollTop;
 			const delta = scrollTop - lastScrollTop;
+			if ( isProgrammaticScroll ) {
+				lastScrollTop = scrollTop;
+				return;
+			}
 			if ( Math.abs( delta ) < 1 ) {
 				return;
 			}

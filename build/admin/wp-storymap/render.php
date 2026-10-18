@@ -91,7 +91,7 @@ if ( $story_number > 0 ) {
 			"SELECT id, num, name, description, lat, lon, zoom, image
 			FROM {$points_table}
 			WHERE storyId = %d
-			ORDER BY num ASC",
+			ORDER BY num ASC, id ASC",
 			$story_number
 		),
 		ARRAY_A

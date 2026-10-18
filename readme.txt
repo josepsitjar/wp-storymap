@@ -31,7 +31,8 @@ Requirements: WordPress 6.8 or later and PHP 7.4 or later.
 3. In the dashboard, go to **Storymaps > Add New**. Enter a title and publish the Storymap. Its map block is added automatically.
 4. Go to **Storymaps > Add Point**. Select the Storymap, choose a location on the map, enter the point's title and description, optionally add an image, and save the point. Repeat to add more points.
 5. To display a Storymap on another page or post, edit that page or post, add the **Storymap Map** block, select the Storymap in the block settings, and publish or update the page.
-6. Use **Storymaps > All Points** to manage your points. Select **Edit** for full editing, **Quick Edit** to change a point's title or description, or **Trash** to hide it temporarily. Trashed points can be restored from the Trash view.
+6. Set a point's **Position** when adding or editing it to control its order in the Storymap. Points are shown in that order when visitors use the arrows or scroll through the information panel.
+7. Use **Storymaps > All Points** to manage your points. Select **Edit** for full editing, **Quick Edit** to change a point's title, description, Storymap, or position, or **Trash** to hide it temporarily. Trashed points can be restored from the Trash view.
 
 If you are upgrading from a version earlier than 3.0, back up your database and files before updating, and test the update on a staging site. Storymaps created with earlier versions may not be fully compatible.
 
@@ -55,4 +56,3 @@ There are currently no FAQs at this time.
 5. Page with all your points and related info.
 6. How to insert a story in a page or post.
 7. Storymap public view.
-

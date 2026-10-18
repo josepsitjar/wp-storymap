@@ -272,6 +272,62 @@ function wp_storymap_restore_point() {
 add_action( 'admin_post_wp_storymap_restore_point', 'wp_storymap_restore_point' );
 
 /**
+ * Places a point at its requested position and renumbers the points in its Storymap.
+ *
+ * @param int $story_number  Storymap number.
+ * @param int $point_id      Point ID.
+ * @param int $requested_position One-based position; zero appends the point.
+ * @return bool
+ */
+function wp_storymap_set_point_order( $story_number, $point_id, $requested_position ) {
+	global $wpdb;
+
+	$points_table = $wpdb->prefix . 'storymap_pro_points';
+	$point_ids    = $wpdb->get_col(
+		$wpdb->prepare(
+			"SELECT id FROM {$points_table} WHERE storyId = %d ORDER BY num ASC, id ASC",
+			$story_number
+		)
+	);
+	if ( $wpdb->last_error || ! $point_ids ) {
+		return false;
+	}
+
+	$point_ids = array_map( 'intval', $point_ids );
+	if ( ! in_array( $point_id, $point_ids, true ) ) {
+		return false;
+	}
+
+	$point_ids = array_values( array_diff( $point_ids, array( $point_id ) ) );
+	$position  = $requested_position > 0
+		? min( $requested_position, count( $point_ids ) + 1 )
+		: count( $point_ids ) + 1;
+	array_splice( $point_ids, $position - 1, 0, array( $point_id ) );
+
+	$cases = array();
+	$args  = array();
+	foreach ( $point_ids as $index => $ordered_point_id ) {
+		$cases[] = 'WHEN %d THEN %d';
+		$args[]  = $ordered_point_id;
+		$args[]  = $index + 1;
+	}
+
+	$id_placeholders = implode( ', ', array_fill( 0, count( $point_ids ), '%d' ) );
+	$args[]          = $story_number;
+	$args            = array_merge( $args, $point_ids );
+	$updated         = $wpdb->query(
+		$wpdb->prepare(
+			"UPDATE {$points_table}
+			SET num = CASE id " . implode( ' ', $cases ) . ' ELSE num END
+			WHERE storyId = %d AND id IN (' . $id_placeholders . ')',
+			$args
+		)
+	);
+
+	return false !== $updated && ! $wpdb->last_error;
+}
+
+/**
  * Applies a bulk trash or restore action to selected points.
  */
 function wp_storymap_bulk_manage_points() {
@@ -351,8 +407,9 @@ function wp_storymap_quick_edit_point() {
 	$point_id = isset( $_POST['point_id'] ) ? absint( wp_unslash( $_POST['point_id'] ) ) : 0;
 	$name     = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
 	$story_number = isset( $_POST['story_number'] ) ? absint( wp_unslash( $_POST['story_number'] ) ) : 0;
+	$point_order = isset( $_POST['point_order'] ) ? absint( wp_unslash( $_POST['point_order'] ) ) : 0;
 	$description = isset( $_POST['description'] ) ? wp_kses_post( wp_unslash( $_POST['description'] ) ) : '';
-	if ( ! $point_id || ! $story_number || '' === $name || strlen( $name ) > 255 || strlen( $description ) > 10000 ) {
+	if ( ! $point_id || ! $story_number || ! $point_order || '' === $name || strlen( $name ) > 255 || strlen( $description ) > 10000 ) {
 		wp_storymap_redirect_points_list( 'invalid' );
 	}
 	if ( in_array( $point_id, wp_storymap_get_trashed_point_ids(), true ) ) {
@@ -385,34 +442,23 @@ function wp_storymap_quick_edit_point() {
 		wp_storymap_redirect_points_list( 'invalid' );
 	}
 
-	$point_number = (int) $existing_point->num;
-	if ( (int) $existing_point->storyId !== $story_number ) {
-		$point_number = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COALESCE(MAX(num), 0) + 1 FROM {$points_table} WHERE storyId = %d",
-				$story_number
-			)
-		);
-		if ( $wpdb->last_error ) {
-			error_log( 'WP Storymap could not determine the next point number during quick edit: ' . $wpdb->last_error );
-			wp_storymap_redirect_points_list( 'action_failed' );
-		}
-	}
-
 	$updated      = $wpdb->update(
 		$points_table,
 		array(
 			'name'        => $name,
 			'description' => $description,
-			'num'         => max( 1, $point_number ),
 			'storyId'     => $story_number,
 		),
 		array( 'id' => $point_id ),
-		array( '%s', '%s', '%d', '%d' ),
+		array( '%s', '%s', '%d' ),
 		array( '%d' )
 	);
 	if ( false === $updated ) {
 		error_log( 'WP Storymap could not quick-edit point ' . $point_id . ': ' . $wpdb->last_error );
+		wp_storymap_redirect_points_list( 'action_failed' );
+	}
+	if ( ! wp_storymap_set_point_order( $story_number, $point_id, $point_order ) ) {
+		error_log( 'WP Storymap could not set the order for point ' . $point_id . ': ' . $wpdb->last_error );
 		wp_storymap_redirect_points_list( 'action_failed' );
 	}
 
@@ -673,6 +719,10 @@ function wp_storymap_render_points_admin_page() {
 														<?php endforeach; ?>
 													</select>
 												</label>
+												<label>
+													<span class="title"><?php esc_html_e( 'Position', 'wp-storymap' ); ?></span>
+													<input type="number" name="point_order" min="1" value="<?php echo esc_attr( max( 1, (int) $point->num ) ); ?>" required>
+												</label>
 											</div>
 										</fieldset>
 										<fieldset class="inline-edit-col-right">
@@ -851,7 +901,7 @@ function wp_storymap_render_point_admin_page() {
 	if ( $editing_point_id && $points_table_found === $points_table ) {
 		$editing_point = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT id, name, description, lat, lon, zoom, image, storyId
+				"SELECT id, num, name, description, lat, lon, zoom, image, storyId
 				FROM {$points_table}
 				WHERE id = %d",
 				$editing_point_id
@@ -927,6 +977,13 @@ function wp_storymap_render_point_admin_page() {
 									<?php endforeach; ?>
 								</select>
 								<p class="description"><?php esc_html_e( 'The selected Storymap will be assigned to this point.', 'wp-storymap' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="wp-storymap-point-order"><?php esc_html_e( 'Position', 'wp-storymap' ); ?></label></th>
+							<td>
+								<input id="wp-storymap-point-order" name="point_order" type="number" min="1" step="1" value="<?php echo esc_attr( $editing_point ? max( 1, (int) $editing_point->num ) : '' ); ?>">
+								<p class="description"><?php esc_html_e( 'Set the point order in this Storymap. Leave empty when adding a point to append it at the end.', 'wp-storymap' ); ?></p>
 							</td>
 						</tr>
 						<tr>
@@ -1052,6 +1109,7 @@ function wp_storymap_save_point() {
 	$points_table = $wpdb->prefix . 'storymap_pro_points';
 	$point_id = isset( $_POST['point_id'] ) ? absint( wp_unslash( $_POST['point_id'] ) ) : 0;
 	$story_number = isset( $_POST['story_number'] ) ? (int) wp_unslash( $_POST['story_number'] ) : 0;
+	$point_order = isset( $_POST['point_order'] ) ? absint( wp_unslash( $_POST['point_order'] ) ) : 0;
 	$name = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
 	$description = isset( $_POST['description'] ) ? wp_kses_post( wp_unslash( $_POST['description'] ) ) : '';
 	$latitude_raw = isset( $_POST['lat'] ) ? wp_unslash( $_POST['lat'] ) : '';
@@ -1202,7 +1260,10 @@ function wp_storymap_save_point() {
 		$status = 'save_failed';
 	} else {
 		$saved_point_id = $existing_point ? $point_id : (int) $wpdb->insert_id;
-		if ( ! $saved_point_id || ! wp_storymap_save_point_marker_color( $saved_point_id, $marker_color ) ) {
+		if ( ! $saved_point_id || ! wp_storymap_set_point_order( $story_number, $saved_point_id, $point_order ) ) {
+			error_log( 'WP Storymap could not set the order for point ' . $saved_point_id . ': ' . $wpdb->last_error );
+			$status = 'save_failed';
+		} elseif ( ! wp_storymap_save_point_marker_color( $saved_point_id, $marker_color ) ) {
 			error_log( 'WP Storymap could not save the selected marker color for point ' . $saved_point_id . '.' );
 			$status = 'save_failed';
 		} else {
