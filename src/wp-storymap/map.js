@@ -41,8 +41,26 @@ function getInfoPanelPadding( map ) {
 		};
 	}
 
+	return {};
+}
+
+function getOverviewPadding( map ) {
+	const mapContainer = map.getContainer();
+
+	if ( mapContainer.clientWidth > 680 ) {
+		return {
+			top: 48,
+			right: Math.min( 720, mapContainer.clientWidth * 0.76 ),
+			bottom: 48,
+			left: 48,
+		};
+	}
+
 	return {
+		top: 48,
+		right: 48,
 		bottom: Math.round( mapContainer.clientHeight * 0.42 ) + 24,
+		left: 48,
 	};
 }
 
@@ -286,14 +304,8 @@ class StorymapNavigationControl {
 			return;
 		}
 
-		const panelPadding = getInfoPanelPadding( this.map );
 		this.map.fitBounds( this.bounds, {
-			padding: {
-				top: 48,
-				right: panelPadding.right || 48,
-				bottom: panelPadding.bottom || 48,
-				left: 48,
-			},
+			padding: getOverviewPadding( this.map ),
 			maxZoom: 12,
 			duration: 1000,
 		} );
@@ -507,9 +519,10 @@ function createPointInfoPanel( map, container, intro, points ) {
 
 		const panelTop = panel.getBoundingClientRect().top;
 		const titleTop = title.getBoundingClientRect().top;
+		const titleOffset = direction < 0 ? 16 : 32;
 		const targetTop = Math.max(
 			0,
-			panel.scrollTop + titleTop - panelTop - 32
+			panel.scrollTop + titleTop - panelTop - titleOffset
 		);
 		panel.scrollTo( {
 			top: targetTop,
@@ -690,14 +703,8 @@ export default function createStorymapMap( container ) {
 				return;
 			}
 
-			const panelPadding = getInfoPanelPadding( map );
 			map.fitBounds( bounds, {
-				padding: {
-					top: 48,
-					right: panelPadding.right || 48,
-					bottom: panelPadding.bottom || 48,
-					left: 48,
-				},
+				padding: getOverviewPadding( map ),
 				maxZoom: 12,
 			} );
 		} );

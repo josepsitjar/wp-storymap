@@ -169,13 +169,11 @@
 .storymap-point-info-section {
 	padding: 0 1rem 1.25rem 0;
 	margin: 0 0 1.25rem;
-	border-bottom: 1px solid rgb(0 0 0 / 14%);
 }
 
 .storymap-point-info-section:last-of-type {
 	padding-bottom: 0;
 	margin-bottom: 0;
-	border-bottom: 0;
 }
 
 .storymap-point-info-section--active[data-slide-direction="forward"] {
