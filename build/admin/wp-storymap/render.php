@@ -69,7 +69,7 @@ $story_image_id = absint( get_post_meta( $post_id, 'wp_storymap_image', true ) )
 $story_image_url = $story_image_id ? wp_get_attachment_image_url( $story_image_id, 'large' ) : '';
 $story_intro = array(
 	'title'       => get_the_title( $post_id ),
-	'description' => sanitize_textarea_field( get_post_meta( $post_id, 'wp_storymap_description', true ) ),
+	'description' => wp_kses_post( get_post_meta( $post_id, 'wp_storymap_description', true ) ),
 	'image'       => $story_image_url ? esc_url_raw( $story_image_url ) : '',
 );
 $height  = $height > 0 ? $height : 500;

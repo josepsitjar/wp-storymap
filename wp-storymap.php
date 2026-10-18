@@ -36,6 +36,22 @@ function create_block_wp_storymap_block_init() {
 add_action( 'init', 'create_block_wp_storymap_block_init' );
 
 /**
+ * Loads the Storymap editor script on every Storymap, even when its map block is absent.
+ */
+function wp_storymap_enqueue_story_editor_script() {
+	$screen = get_current_screen();
+	if ( ! $screen || 'wp_storymap' !== $screen->post_type ) {
+		return;
+	}
+
+	$script_handle = generate_block_asset_handle( 'wp-storymap/map', 'editorScript' );
+	if ( wp_script_is( $script_handle, 'registered' ) ) {
+		wp_enqueue_script( $script_handle );
+	}
+}
+add_action( 'enqueue_block_editor_assets', 'wp_storymap_enqueue_story_editor_script' );
+
+/**
  * Registers storymaps as Gutenberg-editable content.
  */
 function wp_storymap_register_story_post_type() {
@@ -151,7 +167,7 @@ function wp_storymap_register_story_meta() {
 			array(
 				'type'              => 'string',
 				'default'           => '',
-				'sanitize_callback' => 'sanitize_textarea_field',
+				'sanitize_callback' => 'wp_kses_post',
 			)
 		)
 	);
@@ -198,6 +214,69 @@ function wp_storymap_register_story_meta() {
 	}
 }
 add_action( 'init', 'wp_storymap_register_story_meta' );
+
+/**
+ * Adds the rich-text description editor to the Storymap editor.
+ */
+function wp_storymap_add_description_meta_box() {
+	add_meta_box(
+		'wp-storymap-description',
+		__( 'Story description', 'wp-storymap' ),
+		'wp_storymap_render_description_meta_box',
+		'wp_storymap',
+		'normal',
+		'high'
+	);
+}
+add_action( 'add_meta_boxes_wp_storymap', 'wp_storymap_add_description_meta_box' );
+
+/**
+ * Renders the Storymap description using the WordPress rich-text editor.
+ *
+ * @param WP_Post $post Current Storymap post.
+ */
+function wp_storymap_render_description_meta_box( $post ) {
+	wp_nonce_field( 'wp_storymap_save_description', 'wp_storymap_description_nonce' );
+	wp_editor(
+		get_post_meta( $post->ID, 'wp_storymap_description', true ),
+		'wp_storymap_description',
+		array(
+			'textarea_name' => 'wp_storymap_description',
+			'textarea_rows' => 6,
+			'media_buttons' => false,
+			'teeny'         => true,
+		)
+	);
+}
+
+/**
+ * Saves the rich-text Storymap description.
+ *
+ * @param int $post_id Storymap post ID.
+ */
+function wp_storymap_save_description( $post_id ) {
+	if (
+		! isset( $_POST['wp_storymap_description_nonce'] ) ||
+		! wp_verify_nonce(
+			sanitize_text_field( wp_unslash( $_POST['wp_storymap_description_nonce'] ) ),
+			'wp_storymap_save_description'
+		) ||
+		( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) ||
+		wp_is_post_revision( $post_id ) ||
+		! current_user_can( 'edit_post', $post_id ) ||
+		! isset( $_POST['wp_storymap_description'] ) ||
+		! is_string( $_POST['wp_storymap_description'] )
+	) {
+		return;
+	}
+
+	update_post_meta(
+		$post_id,
+		'wp_storymap_description',
+		wp_kses_post( wp_unslash( $_POST['wp_storymap_description'] ) )
+	);
+}
+add_action( 'save_post_wp_storymap', 'wp_storymap_save_description', 30 );
 
 /**
  * Restricts Storymap meta editing to users who can edit the post.

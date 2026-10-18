@@ -1,9 +1,4 @@
-import {
-	Button,
-	SelectControl,
-	TextareaControl,
-	TextControl,
-} from '@wordpress/components';
+import { Button, SelectControl, TextControl } from '@wordpress/components';
 import { MediaUpload, MediaUploadCheck } from '@wordpress/block-editor';
 import { useEntityProp } from '@wordpress/core-data';
 import { useSelect } from '@wordpress/data';
@@ -53,13 +48,6 @@ function StorymapDocumentSettings() {
 			name="wp-storymap-settings"
 			title={ __( 'Storymap settings', 'wp-storymap' ) }
 		>
-			<TextareaControl
-				label={ __( 'Story description', 'wp-storymap' ) }
-				value={ storyMeta.wp_storymap_description || '' }
-				onChange={ ( value ) =>
-					updateMeta( 'wp_storymap_description', value )
-				}
-			/>
 			{ coverImage?.source_url && (
 				<img
 					src={ coverImage.source_url }
