@@ -1,60 +1,58 @@
-=== Wp Storymap ===
-Contributors:      The WordPress Contributors
-Tags:              block
-Tested up to:      6.8
-Stable tag:        0.1.0
-License:           GPL-2.0-or-later
+=== StoryMap Plugin ===
+Contributors:      Keepyourphoto
+Tags:              story map, map, route, trip, points of interest
+Tested up to:      7.1.3
+Stable tag:        3.0
+License:           CC BY-NC-ND for the code developed by Keepyourphoto
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
-Create Storymaps using native WordPress content and display an interactive map in the editor and on the public page. Each Storymap can use OpenStreetMap, satellite, hybrid, relief, cycling, or world street map tiles; the overview map always uses OpenStreetMap. Each Storymap can have an introductory description and image, shown at the start of the information panel. Public maps display the selected Storymap's points connected in order by a red dashed line, with a small overview map in the lower-left showing the full extent of its points. The information panel contains the introduction and all points in order; scrolling through a point title centers the map on that point. Side arrows remain available to scroll through points in order, with directional slide transitions. On wide maps, the panel fills the map height on the right and the map keeps the selected point in the uncovered area; on mobile, the panel is placed at the bottom. Maps fill the screen width by default; enter a pixel width in Storymap settings to use a custom width. Map height uses the Storymap settings. Each Storymap has an independent story number, separate from its WordPress post ID. A page or post can contain multiple map blocks, each assigned to a different Storymap. The WordPress admin includes a Leaflet-based point form that saves points to the existing legacy points table, using the selected Storymap's number in the legacy `storyId` field.
+This plugin makes it easy to create interactive storymaps directly on your WordPress site.
+You can define all the characteristics of your stories (title, basemap) and their associated points (title, description, image, position, zoom level) in an intuitive way.
 
 == Description ==
 
-This is the long description. No limit, and you can use Markdown (as well as in the following sections).
+Create Storymaps using native WordPress content and display an interactive map in the editor and on the public page. Each Storymap can use OpenStreetMap, satellite, hybrid, relief, cycling, or world street map tiles; the overview map always uses OpenStreetMap. Each Storymap can have an introductory description and image, shown at the start of the information panel. Public maps display the selected Storymap's points connected in order by a red dashed line, with a small overview map in the lower-left showing the full extent of its points. The information panel contains the introduction and all points in order; scrolling through a point title centers the map on that point. Side arrows remain available to scroll through points in order, with directional slide transitions. On wide maps, the panel fills the map height on the right and the map keeps the selected point in the uncovered area; on mobile, the panel is placed at the bottom. Maps fill the screen width by default; enter a pixel width in Storymap settings to use a custom width. Map height uses the Storymap settings. Each Storymap has an independent story number, separate from its WordPress post ID. A page or post can contain multiple map blocks, each assigned to a different Storymap. The WordPress admin includes a Leaflet-based point form that saves points to the existing legacy points table, using the selected Storymap's number in the legacy `storyId` field.
 
-For backwards compatibility, if this section is missing, the full length of the short description will be used, and
-Markdown parsed.
+We are continuously working on new developments and features.
+
+For personalized plugin development or other inquiries, contact:
+[Keepyourphoto.com](https://keepyourphoto.com/)
+
+See an example at [keepyourphoto](https://www.keepyourphoto.com/info/wordpress-storymap/)
+
 
 == Installation ==
 
-This section describes how to install the plugin and get it working.
+Requirements: WordPress 6.8 or later and PHP 7.4 or later.
 
-e.g.
+1. Log in to your WordPress dashboard and go to **Plugins > Add New Plugin**. Search for **StoryMap** in the WordPress.org Plugin Directory, click **Install Now**, and then click **Activate**.
+2. Alternatively, download the plugin ZIP file. In your dashboard, go to **Plugins > Add New Plugin > Upload Plugin**, select the ZIP file, click **Install Now**, and then click **Activate Plugin**.
+   - You can also extract the ZIP file and upload the `wp-storymap` folder to `/wp-content/plugins/`. Then go to **Plugins** in your dashboard and activate **StoryMap**.
+3. In the dashboard, go to **Storymaps > Add New**. Enter a title and publish the Storymap. Its map block is added automatically.
+4. Go to **Storymaps > Add Point**. Select the Storymap, choose a location on the map, enter the point's title and description, optionally add an image, and save the point. Repeat to add more points.
+5. To display a Storymap on another page or post, edit that page or post, add the **Storymap Map** block, select the Storymap in the block settings, and publish or update the page.
+6. Use **Storymaps > All Points** to manage your points. Select **Edit** for full editing, **Quick Edit** to change a point's title or description, or **Trash** to hide it temporarily. Trashed points can be restored from the Trash view.
 
-1. Upload the plugin files to the `/wp-content/plugins/wp-storymap` directory, or install the plugin through the WordPress plugins screen directly.
-1. Activate the plugin through the 'Plugins' screen in WordPress
-1. Create and save one or more Storymaps.
-1. Add a Storymap map block to a page or post and choose which Storymap it displays in the block settings.
-1. Open Storymaps > Add Point to select a location, add its details and image, and assign it to a Storymap.
-1. Open Storymaps > All Points to browse points, use Edit for full editing, Quick Edit for the title and description, or Trash to temporarily hide a point. Points can be restored from the Trash view.
-1. Before updating an existing installation with older Storymaps, back up the database and files and test the update on a staging site. Legacy stories may not be fully compatible.
-
-
-== Frequently Asked Questions ==
-
-= A question that someone might have =
-
-An answer to that question.
-
-= What about foo bar? =
-
-Answer to foo bar dilemma.
-
-== Screenshots ==
-
-1. This screen shot description corresponds to screenshot-1.(png|jpg|jpeg|gif). Note that the screenshot is taken from
-the /assets directory or the directory that contains the stable readme.txt (tags or trunk). Screenshots in the /assets
-directory take precedence. For example, `/assets/screenshot-1.png` would win over `/tags/4.3/screenshot-1.png`
-(or jpg, jpeg, gif).
-2. This is the second screen shot
+If you are upgrading from a version earlier than 3.0, back up your database and files before updating, and test the update on a staging site. Storymaps created with earlier versions may not be fully compatible.
 
 == Changelog ==
 
-= 0.1.0 =
-* Release
+= 1.0 =
+* Initial release
 
-== Arbitrary section ==
 
-You may provide arbitrary sections, in the same format as the ones above. This may be of use for extremely complicated
-plugins where more information needs to be conveyed that doesn't fit into the categories of "description" or
-"installation." Arbitrary sections will be shown below the built-in sections outlined above.
+* Working on new developments and functionalities. Please, email for suggestions.
+
+== Frequently Asked Questions ==
+There are currently no FAQs at this time.
+
+== Screenshots ==
+
+1. Page to create and edit stories.
+2. Page with all your stories.
+3. Page to create and edit points (1).
+4. Page to create and edit points (2).
+5. Page with all your points and related info.
+6. How to insert a story in a page or post.
+7. Storymap public view.
+
