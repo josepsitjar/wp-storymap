@@ -224,10 +224,48 @@ class StorymapNavigationControl {
 			return;
 		}
 
+		const direction = Math.sign( index - this.currentIndex ) || 1;
 		this.currentIndex = index;
-		this.previousButton.disabled = false;
-		this.nextButton.disabled = index === this.points.length - 1;
-		this.onSelectPoint( point );
+		this.updateButtons();
+		this.onSelectPoint( index, direction );
+		this.focusPoint( point );
+	}
+
+	showOverview() {
+		const direction = Math.sign( -1 - this.currentIndex ) || -1;
+		this.currentIndex = -1;
+		this.updateButtons();
+		this.onShowOverview( direction );
+
+		this.focusOverview();
+	}
+
+	setActiveIndex( index ) {
+		if (
+			index < -1 ||
+			index >= this.points.length ||
+			index === this.currentIndex
+		) {
+			return;
+		}
+
+		this.currentIndex = index;
+		this.updateButtons();
+
+		if ( index === -1 ) {
+			this.focusOverview();
+			return;
+		}
+
+		this.focusPoint( this.points[ index ] );
+	}
+
+	updateButtons() {
+		this.previousButton.disabled = this.currentIndex === -1;
+		this.nextButton.disabled = this.currentIndex === this.points.length - 1;
+	}
+
+	focusPoint( point ) {
 		this.map.flyTo( {
 			center: [ point.longitude, point.latitude ],
 			zoom: Math.max( 12, point.zoom ),
@@ -235,12 +273,7 @@ class StorymapNavigationControl {
 		} );
 	}
 
-	showOverview() {
-		this.currentIndex = -1;
-		this.previousButton.disabled = true;
-		this.nextButton.disabled = false;
-		this.onShowOverview();
-
+	focusOverview() {
 		if ( this.points.length === 1 ) {
 			this.map.flyTo( {
 				center: [
@@ -273,13 +306,54 @@ class StorymapNavigationControl {
 
 let pointInfoPanelId = 0;
 
-function createPointInfoPanel( map, container, intro ) {
+function createPointInfoPanel( map, container, intro, points ) {
 	pointInfoPanelId += 1;
 	const panel = document.createElement( 'section' );
 	panel.id = `wp-storymap-point-info-${ pointInfoPanelId }`;
 	panel.className = 'storymap-point-info';
-	panel.setAttribute( 'aria-live', 'polite' );
-	panel.hidden = false;
+	panel.setAttribute( 'aria-label', __( 'Story content', 'wp-storymap' ) );
+
+	const createSection = ( index, point, isIntro = false ) => {
+		const section = document.createElement( 'article' );
+		section.className = 'storymap-point-info-section';
+		section.dataset.storymapIndex = `${ index }`;
+
+		const title = document.createElement( 'h2' );
+		title.className = 'storymap-point-info-title';
+		title.dataset.storymapTitleIndex = `${ index }`;
+		title.textContent = point.title || '';
+		section.append( title );
+
+		if ( point.image ) {
+			const image = document.createElement( 'img' );
+			image.className = 'storymap-point-info-image';
+			image.src = point.image;
+			image.alt = point.title || '';
+			section.append( image );
+		}
+
+		if ( point.description ) {
+			const description = document.createElement( 'p' );
+			description.className = 'storymap-point-info-description';
+			description.textContent = point.description;
+			section.append( description );
+		}
+
+		if ( ! isIntro ) {
+			section.classList.add( 'storymap-point-info-point' );
+		}
+
+		panel.append( section );
+		return section;
+	};
+
+	const sections = [
+		createSection( -1, intro, true ),
+		...points.map( ( point, index ) => createSection( index, point ) ),
+	];
+	const titles = sections.map( ( section ) =>
+		section.querySelector( '[data-storymap-title-index]' )
+	);
 
 	const scrollbar = document.createElement( 'div' );
 	scrollbar.className = 'storymap-point-info-scrollbar';
@@ -298,25 +372,18 @@ function createPointInfoPanel( map, container, intro ) {
 	const scrollbarThumb = document.createElement( 'span' );
 	scrollbarThumb.className = 'storymap-point-info-scrollbar-thumb';
 	scrollbar.append( scrollbarThumb );
-
-	const fallbackContainer = document.createElement( 'div' );
-	fallbackContainer.className = 'storymap-point-info-fallback';
-	fallbackContainer.hidden = true;
-	container.after( fallbackContainer );
-	container.append( scrollbar );
+	panel.append( scrollbar );
+	container.append( panel );
 
 	const updateScrollbar = () => {
 		const maxScroll = panel.scrollHeight - panel.clientHeight;
 		const isScrollable = maxScroll > 1 && panel.clientHeight > 0;
-
-		scrollbar.hidden = ! isScrollable || panel.parentElement !== container;
+		scrollbar.hidden = ! isScrollable;
 		if ( scrollbar.hidden ) {
 			return;
 		}
 
-		const mapBounds = container.getBoundingClientRect();
-		const panelBounds = panel.getBoundingClientRect();
-		const trackHeight = Math.max( 0, panelBounds.height - 16 );
+		const trackHeight = Math.max( 0, panel.clientHeight - 16 );
 		const thumbHeight = Math.min(
 			trackHeight,
 			Math.max(
@@ -328,8 +395,8 @@ function createPointInfoPanel( map, container, intro ) {
 		const thumbTop =
 			maxScroll > 0 ? ( panel.scrollTop / maxScroll ) * thumbTravel : 0;
 
-		scrollbar.style.left = `${ panelBounds.right - mapBounds.left - 14 }px`;
-		scrollbar.style.top = `${ panelBounds.top - mapBounds.top + 8 }px`;
+		scrollbar.style.left = `${ panel.clientWidth - 14 }px`;
+		scrollbar.style.top = '8px';
 		scrollbar.style.height = `${ trackHeight }px`;
 		scrollbarThumb.style.height = `${ thumbHeight }px`;
 		scrollbarThumb.style.transform = `translateY(${ thumbTop }px)`;
@@ -411,30 +478,91 @@ function createPointInfoPanel( map, container, intro ) {
 		panel.scrollTop += keySteps[ event.key ];
 		updateScrollbar();
 	} );
-	panel.addEventListener( 'scroll', updateScrollbar );
 
-	let activeCoordinates = null;
-	let scheduledPosition = false;
-
-	const positionPanel = () => {
-		scheduledPosition = false;
-		if ( panel.hidden ) {
+	let activeIndex = -1;
+	let lastScrollTop = panel.scrollTop;
+	let onActiveIndexChange = () => {};
+	const setActiveSection = ( index, direction ) => {
+		if ( index < -1 || index >= sections.length - 1 ) {
 			return;
 		}
 
-		if ( panel.parentElement !== container ) {
-			fallbackContainer.hidden = true;
-			container.append( panel );
+		const previousSection = sections[ activeIndex + 1 ];
+		previousSection?.classList.remove(
+			'storymap-point-info-section--active'
+		);
+		previousSection?.removeAttribute( 'aria-current' );
+		activeIndex = index;
+
+		const section = sections[ index + 1 ];
+		section.classList.add( 'storymap-point-info-section--active' );
+		section.setAttribute( 'aria-current', 'location' );
+		section.dataset.slideDirection = direction < 0 ? 'backward' : 'forward';
+	};
+
+	const scrollToSection = ( index, direction ) => {
+		const section = sections[ index + 1 ];
+		const title = titles[ index + 1 ];
+		setActiveSection( index, direction );
+
+		const panelTop = panel.getBoundingClientRect().top;
+		const titleTop = title.getBoundingClientRect().top;
+		const targetTop = Math.max(
+			0,
+			panel.scrollTop + titleTop - panelTop - 32
+		);
+		panel.scrollTo( {
+			top: targetTop,
+			behavior: window.matchMedia( '(prefers-reduced-motion: reduce)' )
+				.matches
+				? 'auto'
+				: 'smooth',
+		} );
+		return section;
+	};
+
+	let scrollFrame = 0;
+	panel.addEventListener( 'scroll', () => {
+		updateScrollbar();
+		if ( scrollFrame ) {
+			return;
 		}
 
+		scrollFrame = window.requestAnimationFrame( () => {
+			scrollFrame = 0;
+			const scrollTop = panel.scrollTop;
+			const delta = scrollTop - lastScrollTop;
+			if ( Math.abs( delta ) < 1 ) {
+				return;
+			}
+
+			lastScrollTop = scrollTop;
+			const panelBounds = panel.getBoundingClientRect();
+			const crossedTitles = titles.filter( ( title ) => {
+				const bounds = title.getBoundingClientRect();
+				return delta > 0
+					? bounds.top < panelBounds.bottom &&
+							bounds.top + delta >= panelBounds.bottom
+					: bounds.bottom > panelBounds.top &&
+							bounds.bottom + delta <= panelBounds.top;
+			} );
+
+			if ( ! crossedTitles.length ) {
+				return;
+			}
+
+			const title =
+				delta > 0
+					? crossedTitles[ crossedTitles.length - 1 ]
+					: crossedTitles[ 0 ];
+			const index = Number( title.dataset.storymapTitleIndex );
+			setActiveSection( index, delta );
+			onActiveIndexChange( index );
+		} );
+	} );
+
+	const positionPanel = () => {
 		const mapBounds = map.getContainer().getBoundingClientRect();
-		panel.classList.remove(
-			'storymap-point-info--left',
-			'storymap-point-info--right',
-			'storymap-point-info--top',
-			'storymap-point-info--bottom',
-			'storymap-point-info--desktop'
-		);
 		if ( mapBounds.width > 680 ) {
 			const panelWidth = Math.min( 720, mapBounds.width * 0.76 );
 			container.style.setProperty(
@@ -447,144 +575,36 @@ function createPointInfoPanel( map, container, intro ) {
 			panel.style.right = '0';
 			panel.style.top = '0';
 			panel.style.bottom = '0';
-			panel.style.transform = 'none';
-			updateScrollbar();
-			return;
-		}
-
-		container.classList.remove( 'storymap-has-point-info' );
-		panel.style.left = '12px';
-		panel.style.right = 'auto';
-		panel.style.top = '12px';
-		panel.style.bottom = 'auto';
-		panel.style.transform = 'none';
-
-		const panelBounds = panel.getBoundingClientRect();
-		if ( ! activeCoordinates ) {
-			const top = mapBounds.height - panelBounds.height;
+		} else {
+			container.classList.remove( 'storymap-has-point-info' );
+			panel.classList.remove( 'storymap-point-info--desktop' );
 			panel.style.left = '0';
-			panel.style.top = `${ top }px`;
-			updateScrollbar();
-			return;
+			panel.style.right = '0';
+			panel.style.top = 'auto';
+			panel.style.bottom = '0';
 		}
 
-		const markerPoint = map.project( activeCoordinates );
-		const gap = 24;
-		const candidates =
-			mapBounds.width <= 680
-				? [
-						{
-							name: 'bottom',
-							left: 0,
-							top: mapBounds.height - panelBounds.height,
-						},
-						{
-							name: 'top',
-							left: 0,
-							top: 0,
-						},
-					]
-				: [
-						{
-							name: 'left',
-							left: 12,
-							top: ( mapBounds.height - panelBounds.height ) / 2,
-						},
-						{
-							name: 'right',
-							left: mapBounds.width - panelBounds.width - 12,
-							top: ( mapBounds.height - panelBounds.height ) / 2,
-						},
-						{
-							name: 'top',
-							left: ( mapBounds.width - panelBounds.width ) / 2,
-							top: 12,
-						},
-						{
-							name: 'bottom',
-							left: ( mapBounds.width - panelBounds.width ) / 2,
-							top: mapBounds.height - panelBounds.height - 12,
-						},
-					];
-
-		const availablePosition = candidates.find(
-			( candidate ) =>
-				markerPoint.x < candidate.left - gap ||
-				markerPoint.x > candidate.left + panelBounds.width + gap ||
-				markerPoint.y < candidate.top - gap ||
-				markerPoint.y > candidate.top + panelBounds.height + gap
-		);
-
-		if ( ! availablePosition ) {
-			fallbackContainer.append( panel );
-			fallbackContainer.hidden = false;
-			updateScrollbar();
-			return;
-		}
-
-		panel.classList.add(
-			`storymap-point-info--${ availablePosition.name }`
-		);
-		panel.style.left = `${ availablePosition.left }px`;
-		panel.style.top = `${ availablePosition.top }px`;
 		updateScrollbar();
 	};
 
-	const schedulePosition = () => {
-		if ( scheduledPosition ) {
-			return;
-		}
+	map.on( 'resize', positionPanel );
+	new window.ResizeObserver( () => {
+		map.resize();
+		positionPanel();
+	} ).observe( container );
+	positionPanel();
+	sections[ 0 ].classList.add( 'storymap-point-info-section--active' );
+	sections[ 0 ].setAttribute( 'aria-current', 'location' );
 
-		scheduledPosition = true;
-		window.requestAnimationFrame( positionPanel );
+	return {
+		panel,
+		scrollToPoint: ( index, direction ) =>
+			scrollToSection( index, direction ),
+		scrollToIntro: ( direction ) => scrollToSection( -1, direction ),
+		setOnActiveIndexChange: ( callback ) => {
+			onActiveIndexChange = callback;
+		},
 	};
-
-	const render = ( point, coordinates ) => {
-		panel.replaceChildren();
-		panel.hidden = false;
-		activeCoordinates = coordinates || null;
-
-		const title = document.createElement( 'h2' );
-		title.className = 'storymap-point-info-title';
-		title.textContent = point.title || '';
-		panel.append( title );
-
-		if ( point.image ) {
-			const image = document.createElement( 'img' );
-			image.className = 'storymap-point-info-image';
-			image.src = point.image;
-			image.alt = point.title || '';
-			image.addEventListener( 'load', schedulePosition, { once: true } );
-			panel.append( image );
-		}
-
-		if ( point.description ) {
-			const description = document.createElement( 'p' );
-			description.className = 'storymap-point-info-description';
-			description.textContent = point.description;
-			panel.append( description );
-		}
-
-		schedulePosition();
-	};
-
-	const renderStory = () => {
-		render( intro, null );
-	};
-
-	const renderPoint = ( point ) => {
-		render( point, [ point.longitude, point.latitude ] );
-	};
-
-	const clear = () => {
-		renderStory();
-	};
-
-	map.on( 'move', schedulePosition );
-	map.on( 'resize', schedulePosition );
-	new window.ResizeObserver( () => map.resize() ).observe( container );
-	renderStory();
-	return { panel, render: renderPoint, clear };
 }
 
 export default function createStorymapMap( container ) {
@@ -606,12 +626,15 @@ export default function createStorymapMap( container ) {
 	] );
 	const bounds = new LngLatBounds();
 	coordinates.forEach( ( coordinate ) => bounds.extend( coordinate ) );
-	const pointInfo = createPointInfoPanel( map, container, intro );
+	const pointInfo = createPointInfoPanel( map, container, intro, points );
 	const navigationControl = new StorymapNavigationControl(
 		points,
 		bounds,
-		pointInfo.render,
-		pointInfo.clear
+		( index, direction ) => pointInfo.scrollToPoint( index, direction ),
+		( direction ) => pointInfo.scrollToIntro( direction )
+	);
+	pointInfo.setOnActiveIndexChange( ( index ) =>
+		navigationControl.setActiveIndex( index )
 	);
 
 	points.forEach( ( point, index ) => {

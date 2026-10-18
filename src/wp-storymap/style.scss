@@ -99,12 +99,13 @@
 	overflow: auto;
 	border: 1px solid rgb(255 255 255 / 55%);
 	border-radius: 6px;
-	background: rgb(255 255 255 / 88%);
+	background: rgb(255 255 255 / 75%);
 	box-shadow: 0 2px 12px rgb(0 0 0 / 28%);
 	backdrop-filter: blur(5px);
 	scrollbar-color: #646970 #e0e0e0;
 	scrollbar-width: auto;
 	z-index: 5;
+	scroll-behavior: smooth;
 }
 
 .storymap-point-info::-webkit-scrollbar {
@@ -161,23 +162,57 @@
 	border-radius: 0;
 }
 
-.storymap-point-info[hidden],
-.storymap-point-info-fallback[hidden] {
+.storymap-point-info[hidden] {
 	display: none;
 }
 
-.storymap-point-info-fallback {
-	margin: 0 auto;
-	width: 100%;
+.storymap-point-info-section {
+	padding: 0 1rem 1.25rem 0;
+	margin: 0 0 1.25rem;
+	border-bottom: 1px solid rgb(0 0 0 / 14%);
 }
 
-.storymap-point-info-fallback .storymap-point-info {
-	position: relative;
-	inset: auto;
-	width: auto;
-	max-height: none;
-	transform: none;
+.storymap-point-info-section:last-of-type {
+	padding-bottom: 0;
+	margin-bottom: 0;
+	border-bottom: 0;
 }
+
+.storymap-point-info-section--active[data-slide-direction="forward"] {
+	animation: storymap-slide-up 260ms ease-out;
+}
+
+.storymap-point-info-section--active[data-slide-direction="backward"] {
+	animation: storymap-slide-down 260ms ease-out;
+}
+
+
+@keyframes storymap-slide-up {
+
+	from {
+		opacity: 0.65;
+		transform: translateY(18px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes storymap-slide-down {
+
+	from {
+		opacity: 0.65;
+		transform: translateY(-18px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 
 .storymap-point-info-title {
 	margin: 0 0 0.5rem;
@@ -206,8 +241,15 @@
 		padding: 1rem;
 		border-radius: 0;
 	}
+}
 
-	.storymap-point-info-fallback .storymap-point-info {
-		width: 100%;
+@media (prefers-reduced-motion: reduce) {
+
+	.storymap-point-info {
+		scroll-behavior: auto;
+	}
+
+	.storymap-point-info-section--active {
+		animation-duration: 0.01ms !important;
 	}
 }
