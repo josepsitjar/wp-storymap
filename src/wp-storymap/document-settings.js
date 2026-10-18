@@ -87,6 +87,7 @@ function StorymapDocumentSettings() {
 					) }
 				/>
 			</MediaUploadCheck>
+			<p>{ __( 'Story image (optional).', 'wp-storymap' ) }</p>
 			{ coverImageId > 0 && (
 				<Button
 					variant="tertiary"

@@ -407,9 +407,9 @@ function createPointInfoPanel( map, container, intro, points ) {
 		}
 
 		if ( point.description ) {
-			const description = document.createElement( 'p' );
+			const description = document.createElement( 'div' );
 			description.className = 'storymap-point-info-description';
-			description.textContent = point.description;
+			description.innerHTML = point.description;
 			section.append( description );
 		}
 
@@ -638,6 +638,7 @@ function createPointInfoPanel( map, container, intro, points ) {
 
 	const positionPanel = () => {
 		const mapBounds = map.getContainer().getBoundingClientRect();
+		sections[ 0 ].style.minHeight = `${ map.getContainer().clientHeight }px`;
 		if ( mapBounds.width > 680 ) {
 			const panelWidth = Math.min( 720, mapBounds.width * 0.76 );
 			container.style.setProperty(

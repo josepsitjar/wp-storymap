@@ -351,7 +351,7 @@ function wp_storymap_quick_edit_point() {
 	$point_id = isset( $_POST['point_id'] ) ? absint( wp_unslash( $_POST['point_id'] ) ) : 0;
 	$name     = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
 	$story_number = isset( $_POST['story_number'] ) ? absint( wp_unslash( $_POST['story_number'] ) ) : 0;
-	$description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
+	$description = isset( $_POST['description'] ) ? wp_kses_post( wp_unslash( $_POST['description'] ) ) : '';
 	if ( ! $point_id || ! $story_number || '' === $name || strlen( $name ) > 255 || strlen( $description ) > 10000 ) {
 		wp_storymap_redirect_points_list( 'invalid' );
 	}
@@ -636,7 +636,7 @@ function wp_storymap_render_points_admin_page() {
 							</td>
 							<td><?php echo esc_html( $point->story_name ? $point->story_name : __( 'Story unavailable', 'wp-storymap' ) ); ?></td>
 							<td><?php echo esc_html( $point->lat . ', ' . $point->lon ); ?></td>
-							<td><?php echo esc_html( wp_trim_words( $point->description, 20 ) ); ?></td>
+							<td><?php echo esc_html( wp_trim_words( wp_strip_all_tags( $point->description ), 20 ) ); ?></td>
 							<td>
 								<?php if ( $point->image ) : ?>
 									<a href="<?php echo esc_url( $point->image ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View image', 'wp-storymap' ); ?></a>
@@ -935,7 +935,20 @@ function wp_storymap_render_point_admin_page() {
 						</tr>
 						<tr>
 							<th scope="row"><label for="wp-storymap-point-description"><?php esc_html_e( 'Description', 'wp-storymap' ); ?></label></th>
-							<td><textarea id="wp-storymap-point-description" name="description" class="large-text" rows="5" maxlength="10000" required><?php echo esc_textarea( $editing_point ? $editing_point->description : '' ); ?></textarea></td>
+							<td>
+								<?php
+								wp_editor(
+									$editing_point ? $editing_point->description : '',
+									'wp-storymap-point-description',
+									array(
+										'textarea_name' => 'description',
+										'textarea_rows' => 5,
+										'media_buttons' => false,
+									)
+								);
+								?>
+								<p class="description"><?php esc_html_e( 'You can format the description with bold, italics, links, and other rich text options.', 'wp-storymap' ); ?></p>
+							</td>
 						</tr>
 						<tr>
 							<th scope="row"><label for="wp-storymap-point-marker-color-code"><?php esc_html_e( 'Marker color', 'wp-storymap' ); ?></label></th>
@@ -976,7 +989,7 @@ function wp_storymap_render_point_admin_page() {
 							</td>
 						</tr>
 						<tr>
-							<th scope="row"><?php esc_html_e( 'Image', 'wp-storymap' ); ?></th>
+							<th scope="row"><?php esc_html_e( 'Image (optional)', 'wp-storymap' ); ?></th>
 							<td>
 								<?php $image_attachment_id = $editing_point ? attachment_url_to_postid( $editing_point->image ) : 0; ?>
 								<input id="wp-storymap-point-image-id" name="image_id" type="hidden" value="<?php echo esc_attr( $image_attachment_id ); ?>">
@@ -1040,7 +1053,7 @@ function wp_storymap_save_point() {
 	$point_id = isset( $_POST['point_id'] ) ? absint( wp_unslash( $_POST['point_id'] ) ) : 0;
 	$story_number = isset( $_POST['story_number'] ) ? (int) wp_unslash( $_POST['story_number'] ) : 0;
 	$name = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
-	$description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
+	$description = isset( $_POST['description'] ) ? wp_kses_post( wp_unslash( $_POST['description'] ) ) : '';
 	$latitude_raw = isset( $_POST['lat'] ) ? wp_unslash( $_POST['lat'] ) : '';
 	$longitude_raw = isset( $_POST['lon'] ) ? wp_unslash( $_POST['lon'] ) : '';
 	$zoom = isset( $_POST['zoom'] ) ? (int) wp_unslash( $_POST['zoom'] ) : -1;
@@ -1123,7 +1136,7 @@ function wp_storymap_save_point() {
 		$zoom < 0 ||
 		$zoom > 20 ||
 		! $marker_color ||
-		( ! $existing_point && ! $image_url ) ||
+		( $image_id && ! wp_attachment_is_image( $image_id ) ) ||
 		( $image_url && strlen( $image_url ) > 500 )
 	) {
 		$status = $story_number && ! $story_exists ? 'no_stories' : 'invalid';

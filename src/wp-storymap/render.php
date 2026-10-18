@@ -137,7 +137,7 @@ if ( $story_number > 0 ) {
 						'longitude'  => $longitude,
 						'zoom'       => max( 0, min( 20, (int) $point['zoom'] ) ),
 						'title'      => sanitize_text_field( $point['name'] ),
-						'description'=> sanitize_textarea_field( $point['description'] ),
+						'description'=> wp_kses_post( $point['description'] ),
 						'image'      => esc_url_raw( $point['image'] ),
 						'color'      => wp_storymap_get_point_marker_color( (int) $point['id'] ),
 					);
