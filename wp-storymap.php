@@ -2,11 +2,12 @@
 /**
  * Plugin Name:       StoryMap
  * Description:       Create storymaps with an interactive OpenStreetMap map.
- * Version:           0.1.0
+ * Version:           3.1
  * Requires at least: 6.8
  * Requires PHP:      7.4
- * Author:            The WordPress Contributors
- * License:           GPL-2.0-or-later
+ * Author:            Keepyourphoto
+ * Author URI: 	      https://keepyourphoto.com/
+ * License:           CC BY-NC-ND for the code developed by Keepyourphoto
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       wp-storymap
  *

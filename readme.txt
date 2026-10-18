@@ -2,7 +2,7 @@
 Contributors:      Keepyourphoto
 Tags:              story map, map, route, trip, points of interest
 Tested up to:      7.1.3
-Stable tag:        3.0
+Stable tag:        3.1
 License:           CC BY-NC-ND for the code developed by Keepyourphoto
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
