@@ -805,6 +805,13 @@ function wp_storymap_render_points_admin_page() {
 function wp_storymap_get_point_stories() {
 	global $wpdb;
 
+	if ( ! wp_storymap_install_legacy_tables() ) {
+		return new WP_Error(
+			'wp_storymap_legacy_tables_unavailable',
+			__( 'The Storymap database tables could not be created. Check that the database user can create tables and review the PHP error log.', 'wp-storymap' )
+		);
+	}
+
 	$table_name = wp_storymap_legacy_stories_table();
 	$table_found = $wpdb->get_var(
 		$wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) )

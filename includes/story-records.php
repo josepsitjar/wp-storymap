@@ -48,7 +48,6 @@ function wp_storymap_install_legacy_tables() {
 		return true;
 	}
 
-	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 	$charset_collate = $wpdb->get_charset_collate();
 	$schemas         = array(
 		$tables['stories'] => "CREATE TABLE {$tables['stories']} (
@@ -80,7 +79,16 @@ function wp_storymap_install_legacy_tables() {
 	);
 
 	foreach ( $missing_tables as $table_name ) {
-		dbDelta( $schemas[ $table_name ] );
+		if ( false === $wpdb->query( $schemas[ $table_name ] ) ) {
+			error_log(
+				sprintf(
+					'WP Storymap could not create the required table %s: %s',
+					$table_name,
+					$wpdb->last_error ? $wpdb->last_error : 'database query failed'
+				)
+			);
+			return false;
+		}
 	}
 
 	foreach ( $tables as $table_name ) {
