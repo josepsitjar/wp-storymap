@@ -6,8 +6,7 @@ Stable tag:        3.1
 License:           CC BY-NC-ND for the code developed by Keepyourphoto
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
-This plugin makes it easy to create interactive storymaps directly on your WordPress site.
-You can define all the characteristics of your stories (title, basemap) and their associated points (title, description, image, position, zoom level) in an intuitive way.
+Create interactive WordPress Storymaps with customizable maps, introductory content, and ordered points of interest.
 
 == Description ==
 
@@ -34,15 +33,21 @@ Requirements: WordPress 6.8 or later and PHP 7.4 or later.
 6. Set a point's **Position** when adding or editing it to control its order in the Storymap. Points are shown in that order when visitors use the arrows or scroll through the information panel.
 7. Use **Storymaps > All Points** to manage your points. Select **Edit** for full editing, **Quick Edit** to change a point's title, description, Storymap, or position, or **Trash** to hide it temporarily. Trashed points can be restored from the Trash view.
 
+The plugin creates its required story and point tables automatically when they are missing. Existing legacy tables are left unchanged.
+
 If you are upgrading from a version earlier than 3.0, back up your database and files before updating, and test the update on a staging site. Storymaps created with earlier versions may not be fully compatible.
 
 == Changelog ==
 
+= 3.1 =
+* Rebuilt Storymaps as native WordPress content with a Gutenberg map block that can be used on Storymap posts or embedded in other posts and pages.
+* Added story settings for map height, custom width, basemaps, introductory text, and image.
+* Added an interactive, responsive map with ordered points, a scrolling information panel, navigation arrows, and an overview map.
+* Added an admin point editor and point list with quick editing, ordering, marker colors, and reversible trash.
+* Automatically create the required story and point tables when they are missing, while leaving existing legacy tables unchanged.
+
 = 1.0 =
 * Initial release
-
-
-* Working on new developments and functionalities. Please, email for suggestions.
 
 == Frequently Asked Questions ==
 There are currently no FAQs at this time.

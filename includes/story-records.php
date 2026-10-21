@@ -16,6 +16,95 @@ function wp_storymap_legacy_stories_table() {
 }
 
 /**
+ * Creates the legacy-compatible tables required to store Storymap stories and points.
+ *
+ * Existing tables are left untouched so legacy installations keep their schema and data.
+ *
+ * @return bool Whether both tables are available.
+ */
+function wp_storymap_install_legacy_tables() {
+	global $wpdb;
+
+	$tables = array(
+		'stories' => wp_storymap_legacy_stories_table(),
+		'points'  => $wpdb->prefix . 'storymap_pro_points',
+	);
+	$missing_tables = array();
+
+	foreach ( $tables as $table_name ) {
+		$table_found = $wpdb->get_var(
+			$wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) )
+		);
+		if ( $wpdb->last_error ) {
+			error_log( 'WP Storymap could not check its required tables: ' . $wpdb->last_error );
+			return false;
+		}
+		if ( $table_found !== $table_name ) {
+			$missing_tables[] = $table_name;
+		}
+	}
+
+	if ( empty( $missing_tables ) ) {
+		return true;
+	}
+
+	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+	$charset_collate = $wpdb->get_charset_collate();
+	$schemas         = array(
+		$tables['stories'] => "CREATE TABLE {$tables['stories']} (
+			storyNumber int(10) unsigned NOT NULL AUTO_INCREMENT,
+			name varchar(255) NOT NULL DEFAULT '',
+			basemap varchar(50) NOT NULL DEFAULT 'osm',
+			height int(11) NOT NULL DEFAULT 500,
+			image varchar(500) NOT NULL DEFAULT '',
+			description longtext NOT NULL,
+			show_line varchar(3) NOT NULL DEFAULT 'no',
+			PRIMARY KEY  (storyNumber)
+		) {$charset_collate};",
+		$tables['points']  => "CREATE TABLE {$tables['points']} (
+			id int(11) NOT NULL AUTO_INCREMENT,
+			num int(11) NOT NULL DEFAULT 1,
+			name varchar(255) NOT NULL DEFAULT '',
+			description longtext NOT NULL,
+			lat double NOT NULL,
+			lon double NOT NULL,
+			zoom int(11) NOT NULL DEFAULT 0,
+			image varchar(500) NOT NULL DEFAULT '',
+			storyId int(11) NOT NULL,
+			color varchar(20) NOT NULL DEFAULT '#FFFFFF',
+			shapeColor varchar(20) NOT NULL DEFAULT '#000000',
+			shape varchar(100) NOT NULL DEFAULT 'fas fa-camera',
+			PRIMARY KEY  (id),
+			KEY storyId (storyId)
+		) {$charset_collate};",
+	);
+
+	foreach ( $missing_tables as $table_name ) {
+		dbDelta( $schemas[ $table_name ] );
+	}
+
+	foreach ( $tables as $table_name ) {
+		$table_found = $wpdb->get_var(
+			$wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) )
+		);
+		if ( $wpdb->last_error || $table_found !== $table_name ) {
+			error_log(
+				sprintf(
+					'WP Storymap could not create the required table %s: %s',
+					$table_name,
+					$wpdb->last_error ? $wpdb->last_error : 'table not found after creation'
+				)
+			);
+			return false;
+		}
+	}
+
+	return true;
+}
+register_activation_hook( WP_STORYMAP_PLUGIN_FILE, 'wp_storymap_install_legacy_tables' );
+add_action( 'admin_init', 'wp_storymap_install_legacy_tables', 0 );
+
+/**
  * Registers or synchronizes a Gutenberg Storymap's independent story number.
  *
  * @param int $post_id Storymap post ID.
