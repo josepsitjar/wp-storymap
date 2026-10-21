@@ -142,6 +142,25 @@ function wp_storymap_register_story_meta() {
 
 	register_post_meta(
 		'wp_storymap',
+		'wp_storymap_arrow_color',
+		array_merge(
+			$meta_args,
+			array(
+				'type'              => 'string',
+				'default'           => '#000000',
+				'sanitize_callback' => 'sanitize_hex_color',
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'    => 'string',
+						'pattern' => '^#(?:[A-Fa-f0-9]{3}){1,2}$',
+					),
+				),
+			)
+		)
+	);
+
+	register_post_meta(
+		'wp_storymap',
 		'wp_storymap_story_number',
 		array_merge(
 			$meta_args,

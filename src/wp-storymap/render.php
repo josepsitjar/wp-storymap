@@ -34,6 +34,10 @@ if ( $story_number ) {
 $post_id = $story_post_id ? $story_post_id : $current_post_id;
 $height  = (int) get_post_meta( $post_id, 'wp_storymap_height', true );
 $width   = (int) get_post_meta( $post_id, 'wp_storymap_width', true );
+$arrow_color = sanitize_hex_color( get_post_meta( $post_id, 'wp_storymap_arrow_color', true ) );
+if ( ! $arrow_color ) {
+	$arrow_color = '#000000';
+}
 $basemap = get_post_meta( $post_id, 'wp_storymap_basemap', true );
 if ( ! is_string( $basemap ) || '' === $basemap ) {
 	$basemap = 'osm';
@@ -75,7 +79,7 @@ $story_intro = array(
 $height  = $height > 0 ? $height : 500;
 $is_full_width = $width <= 0;
 $class         = 'storymap-map-container';
-$style         = sprintf( 'height:%dpx', $height );
+$style         = sprintf( 'height:%dpx;--storymap-arrow-color:%s', $height, $arrow_color );
 $points        = array();
 
 if ( ! $is_full_width ) {

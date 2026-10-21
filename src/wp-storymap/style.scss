@@ -76,7 +76,7 @@
 }
 
 .storymap-navigation-button::before {
-	color: #222;
+	color: var(--storymap-arrow-color, #000);
 	font-size: 32px;
 	font-weight: 800;
 	line-height: 1;
@@ -245,7 +245,7 @@
 
 	.storymap-point-info {
 		width: 100%;
-		max-height: 42%;
+		max-height: calc(100% - 24px);
 		padding: 1rem;
 		border-radius: 0;
 	}

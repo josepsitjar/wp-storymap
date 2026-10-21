@@ -1,4 +1,10 @@
-import { Button, SelectControl, TextControl } from '@wordpress/components';
+import {
+	BaseControl,
+	Button,
+	ColorPicker,
+	SelectControl,
+	TextControl,
+} from '@wordpress/components';
 import { MediaUpload, MediaUploadCheck } from '@wordpress/block-editor';
 import { useEntityProp } from '@wordpress/core-data';
 import { useSelect } from '@wordpress/data';
@@ -112,6 +118,17 @@ function StorymapDocumentSettings() {
 					updateMeta( 'wp_storymap_basemap', value )
 				}
 			/>
+			<BaseControl
+				id="wp-storymap-arrow-color"
+				label={ __( 'Navigation arrow color', 'wp-storymap' ) }
+			>
+				<ColorPicker
+					color={ storyMeta.wp_storymap_arrow_color || '#000000' }
+					onChange={ ( value ) =>
+						updateMeta( 'wp_storymap_arrow_color', value )
+					}
+				/>
+			</BaseControl>
 			<TextControl
 				label={ __( 'Map height (px)', 'wp-storymap' ) }
 				type="number"

@@ -387,14 +387,11 @@ function createPointInfoPanel( map, container, intro, points ) {
 	panel.className = 'storymap-point-info';
 	panel.setAttribute( 'aria-label', __( 'Story content', 'wp-storymap' ) );
 
-	const createSection = ( index, point, isIntro = false ) => {
-		const section = document.createElement( 'article' );
-		section.className = 'storymap-point-info-section';
-		section.dataset.storymapIndex = `${ index }`;
-
+	const renderSectionContent = ( section, point, isIntro ) => {
+		section.replaceChildren();
 		const title = document.createElement( 'h2' );
 		title.className = 'storymap-point-info-title';
-		title.dataset.storymapTitleIndex = `${ index }`;
+		title.dataset.storymapTitleIndex = section.dataset.storymapIndex;
 		title.textContent = point.title || '';
 		section.append( title );
 
@@ -416,6 +413,13 @@ function createPointInfoPanel( map, container, intro, points ) {
 		if ( ! isIntro ) {
 			section.classList.add( 'storymap-point-info-point' );
 		}
+	};
+
+	const createSection = ( index, point, isIntro = false ) => {
+		const section = document.createElement( 'article' );
+		section.className = 'storymap-point-info-section';
+		section.dataset.storymapIndex = `${ index }`;
+		renderSectionContent( section, point, isIntro );
 
 		panel.append( section );
 		return section;
@@ -663,8 +667,8 @@ function createPointInfoPanel( map, container, intro, points ) {
 
 	const positionPanel = () => {
 		const mapBounds = map.getContainer().getBoundingClientRect();
-		sections[ 0 ].style.minHeight = `${ map.getContainer().clientHeight }px`;
 		if ( mapBounds.width > 680 ) {
+			sections[ 0 ].style.minHeight = `${ map.getContainer().clientHeight }px`;
 			const panelWidth = Math.min( 720, mapBounds.width * 0.76 );
 			container.style.setProperty(
 				'--storymap-panel-width',
@@ -676,19 +680,41 @@ function createPointInfoPanel( map, container, intro, points ) {
 			panel.style.right = '0';
 			panel.style.top = '0';
 			panel.style.bottom = '0';
+			panel.style.height = '';
 		} else {
+			sections[ 0 ].style.minHeight = '';
 			container.classList.remove( 'storymap-has-point-info' );
 			panel.classList.remove( 'storymap-point-info--desktop' );
 			panel.style.left = '0';
 			panel.style.right = '0';
 			panel.style.top = 'auto';
 			panel.style.bottom = '0';
+
+			const panelStyles = window.getComputedStyle( panel );
+			const panelVerticalSpace =
+				parseFloat( panelStyles.paddingTop ) +
+				parseFloat( panelStyles.paddingBottom ) +
+				parseFloat( panelStyles.borderTopWidth ) +
+				parseFloat( panelStyles.borderBottomWidth );
+			panel.style.height = `${
+				sections[ 0 ].getBoundingClientRect().height +
+				panelVerticalSpace
+			}px`;
 		}
 
 		updateScrollbar();
 	};
 
+	const updateIntro = ( updatedIntro ) => {
+		renderSectionContent( sections[ 0 ], updatedIntro, true );
+		titles[ 0 ] = sections[ 0 ].querySelector(
+			'[data-storymap-title-index]'
+		);
+		positionPanel();
+	};
+
 	map.on( 'resize', positionPanel );
+	new window.ResizeObserver( positionPanel ).observe( sections[ 0 ] );
 	new window.ResizeObserver( () => {
 		map.resize();
 		positionPanel();
@@ -702,13 +728,14 @@ function createPointInfoPanel( map, container, intro, points ) {
 		scrollToPoint: ( index, direction ) =>
 			scrollToSection( index, direction ),
 		scrollToIntro: ( direction ) => scrollToSection( -1, direction ),
+		updateIntro,
 		setOnActiveIndexChange: ( callback ) => {
 			onActiveIndexChange = callback;
 		},
 	};
 }
 
-export default function createStorymapMap( container ) {
+export default function createStorymapMap( container, onPointInfoReady ) {
 	const basemap = container.dataset.storymapBasemap || 'osm';
 	const map = new MapLibreMap( {
 		container,
@@ -729,6 +756,7 @@ export default function createStorymapMap( container ) {
 	const bounds = new LngLatBounds();
 	coordinates.forEach( ( coordinate ) => bounds.extend( coordinate ) );
 	const pointInfo = createPointInfoPanel( map, container, intro, points );
+	onPointInfoReady?.( pointInfo.updateIntro );
 	const navigationControl = new StorymapNavigationControl(
 		points,
 		bounds,
