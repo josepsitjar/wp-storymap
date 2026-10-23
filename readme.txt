@@ -3,7 +3,7 @@ Contributors:      Keepyourphoto
 Tags:              story map, map, route, trip, points of interest
 Tested up to:      7.1.3
 Stable tag:        3.1
-License:           CC BY-NC-ND for the code developed by Keepyourphoto
+License:           GPLv2 or later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
 Create interactive WordPress Storymaps with customizable maps, introductory content, and ordered points of interest.
@@ -37,7 +37,14 @@ The plugin creates its required story and point tables automatically when they a
 
 If you are upgrading from a version earlier than 3.0, back up your database and files before updating, and test the update on a staging site. Storymaps created with earlier versions may not be fully compatible.
 
+More information on how to install at [keepyourphoto](https://www.keepyourphoto.com/info/wordpress-storymap/)
+
 == Changelog ==
+
+= 3.2 =
+
+* Point-to-point connection
+* Improve mobile rendering
 
 = 3.1 =
 * Rebuilt Storymaps as native WordPress content with a Gutenberg map block that can be used on Storymap posts or embedded in other posts and pages.
