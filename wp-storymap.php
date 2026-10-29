@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       StoryMap
  * Description:       Create storymaps with an interactive OpenStreetMap map.
- * Version:           3.2
+ * Version:           3.3
  * Requires at least: 6.8
  * Requires PHP:      7.4
  * Author:            Keepyourphoto
