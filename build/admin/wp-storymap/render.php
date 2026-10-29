@@ -34,6 +34,7 @@ if ( $story_number ) {
 $post_id = $story_post_id ? $story_post_id : $current_post_id;
 $height  = (int) get_post_meta( $post_id, 'wp_storymap_height', true );
 $width   = (int) get_post_meta( $post_id, 'wp_storymap_width', true );
+$is_full_bleed = (bool) get_post_meta( $post_id, 'wp_storymap_full_bleed', true );
 $arrow_color = sanitize_hex_color( get_post_meta( $post_id, 'wp_storymap_arrow_color', true ) );
 if ( ! $arrow_color ) {
 	$arrow_color = '#000000';
@@ -84,6 +85,9 @@ $points        = array();
 
 if ( ! $is_full_width ) {
 	$class .= ' storymap-map-container--custom-width';
+}
+if ( $is_full_bleed ) {
+	$class .= ' storymap-map-container--full-bleed';
 }
 
 if ( $story_number > 0 ) {
@@ -139,7 +143,7 @@ if ( $story_number > 0 ) {
 					return array(
 						'latitude'   => $latitude,
 						'longitude'  => $longitude,
-						'zoom'       => max( 0, min( 20, (int) $point['zoom'] ) ),
+						'zoom'       => max( 0, min( 22, (int) $point['zoom'] ) ),
 						'title'      => sanitize_text_field( $point['name'] ),
 						'description'=> wp_kses_post( $point['description'] ),
 						'image'      => esc_url_raw( $point['image'] ),
@@ -156,7 +160,7 @@ if ( $is_full_width && empty( $attributes['align'] ) ) {
 	$class .= ' alignfull';
 }
 
-if ( ! $is_full_width ) {
+if ( ! $is_full_width && ! $is_full_bleed ) {
 	$style .= sprintf( ';width:%dpx;max-width:none', $width );
 }
 

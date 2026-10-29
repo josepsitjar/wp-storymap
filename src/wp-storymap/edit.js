@@ -120,6 +120,7 @@ export default function Edit( { attributes, setAttributes } ) {
 	);
 	const height = Math.max( 1, Number( storyMeta.wp_storymap_height ) || 500 );
 	const width = Math.max( 0, Number( storyMeta.wp_storymap_width ) || 0 );
+	const isFullBleed = Boolean( storyMeta.wp_storymap_full_bleed );
 	const basemap = storyMeta.wp_storymap_basemap || 'osm';
 	const arrowColor = storyMeta.wp_storymap_arrow_color || '#000000';
 	const isFullWidth = width === 0;
@@ -129,6 +130,9 @@ export default function Edit( { attributes, setAttributes } ) {
 	}
 	if ( ! isFullWidth ) {
 		containerClasses.push( 'storymap-map-container--custom-width' );
+	}
+	if ( isFullBleed ) {
+		containerClasses.push( 'storymap-map-container--full-bleed' );
 	}
 	const storyOptions = [
 		{ label: __( 'Select a Storymap', 'wp-storymap' ), value: 0 },
@@ -269,7 +273,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					style: {
 						height: `${ height }px`,
 						'--storymap-arrow-color': arrowColor,
-						...( isFullWidth
+						...( isFullWidth || isFullBleed
 							? {}
 							: { width: `${ width }px`, maxWidth: 'none' } ),
 					},

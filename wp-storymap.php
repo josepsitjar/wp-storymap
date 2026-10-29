@@ -237,6 +237,24 @@ function wp_storymap_register_story_meta()
 			)
 		);
 	}
+
+	register_post_meta(
+		'wp_storymap',
+		'wp_storymap_full_bleed',
+		array_merge(
+			$meta_args,
+			array(
+				'type' => 'boolean',
+				'default' => false,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest' => array(
+					'schema' => array(
+						'type' => 'boolean',
+					),
+				),
+			)
+		)
+	);
 }
 add_action('init', 'wp_storymap_register_story_meta');
 

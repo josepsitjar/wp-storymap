@@ -34,15 +34,16 @@ if ( mapElement ) {
 
 	const initialLatitude = Number( mapElement.dataset.lat );
 	const initialLongitude = Number( mapElement.dataset.lon );
-	const initialZoom = Number( mapElement.dataset.zoom ) || 2;
+	const initialZoom = Number( mapElement.dataset.zoom );
+	const mapZoom = Number.isFinite( initialZoom ) ? initialZoom : 2;
 	const hasInitialLocation =
 		mapElement.dataset.lat !== '' &&
 		mapElement.dataset.lon !== '' &&
 		Number.isFinite( initialLatitude ) &&
 		Number.isFinite( initialLongitude );
-	const map = L.map( mapElement ).setView(
+	const map = L.map( mapElement, { maxZoom: 22 } ).setView(
 		hasInitialLocation ? [ initialLatitude, initialLongitude ] : [ 0, 0 ],
-		initialZoom
+		mapZoom
 	);
 	const latitudeInput = document.getElementById( 'wp-storymap-point-lat' );
 	const longitudeInput = document.getElementById( 'wp-storymap-point-lon' );
@@ -56,11 +57,11 @@ if ( mapElement ) {
 	let marker;
 
 	L.tileLayer( 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		maxZoom: 19,
+		maxNativeZoom: 19,
+		maxZoom: 22,
 		attribution:
 			'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 	} ).addTo( map );
-	zoomInput.value = initialZoom;
 
 	const updateCoordinates = ( location ) => {
 		latitudeInput.value = location.lat.toFixed( 6 );
@@ -90,6 +91,17 @@ if ( mapElement ) {
 	} );
 	map.on( 'zoomend', () => {
 		zoomInput.value = map.getZoom();
+	} );
+	zoomInput.addEventListener( 'change', () => {
+		const zoom = Number( zoomInput.value );
+		if (
+			zoomInput.value !== '' &&
+			Number.isInteger( zoom ) &&
+			zoom >= 0 &&
+			zoom <= 22
+		) {
+			map.setZoom( zoom );
+		}
 	} );
 
 	[ latitudeInput, longitudeInput ].forEach( ( input ) => {

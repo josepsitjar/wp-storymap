@@ -108,22 +108,24 @@ function getBasemapStyle( basemap ) {
 	};
 }
 
-function getInfoPanelPadding( map ) {
+function getInfoPanelPadding( map, panel ) {
 	const mapContainer = map.getContainer();
 
-	if ( mapContainer.clientWidth > 680 ) {
+	if ( mapContainer.clientWidth > 1200 ) {
 		return {
 			right: Math.min( 720, mapContainer.clientWidth * 0.76 ),
 		};
 	}
 
-	return {};
+	return {
+		bottom: panel.getBoundingClientRect().height,
+	};
 }
 
 function getOverviewPadding( map ) {
 	const mapContainer = map.getContainer();
 
-	if ( mapContainer.clientWidth > 680 ) {
+	if ( mapContainer.clientWidth > 1200 ) {
 		return {
 			top: 48,
 			right: Math.min( 720, mapContainer.clientWidth * 0.76 ),
@@ -238,9 +240,10 @@ class StorymapOverviewControl {
 }
 
 class StorymapNavigationControl {
-	constructor( points, bounds, onSelectPoint, onShowOverview ) {
+	constructor( points, bounds, panel, onSelectPoint, onShowOverview ) {
 		this.points = points;
 		this.bounds = bounds;
+		this.panel = panel;
 		this.onSelectPoint = onSelectPoint;
 		this.onShowOverview = onShowOverview;
 		this.currentIndex = -1;
@@ -348,8 +351,8 @@ class StorymapNavigationControl {
 	focusPoint( point ) {
 		this.map.flyTo( {
 			center: [ point.longitude, point.latitude ],
-			zoom: Math.max( 12, point.zoom ),
-			padding: getInfoPanelPadding( this.map ),
+			zoom: point.zoom,
+			padding: getInfoPanelPadding( this.map, this.panel ),
 		} );
 	}
 
@@ -360,8 +363,8 @@ class StorymapNavigationControl {
 					this.points[ 0 ].longitude,
 					this.points[ 0 ].latitude,
 				],
-				zoom: Math.max( 12, this.points[ 0 ].zoom ),
-				padding: getInfoPanelPadding( this.map ),
+				zoom: this.points[ 0 ].zoom,
+				padding: getInfoPanelPadding( this.map, this.panel ),
 			} );
 			return;
 		}
@@ -667,7 +670,7 @@ function createPointInfoPanel( map, container, intro, points ) {
 
 	const positionPanel = () => {
 		const mapBounds = map.getContainer().getBoundingClientRect();
-		if ( mapBounds.width > 680 ) {
+		if ( mapBounds.width > 1200 ) {
 			sections[ 0 ].style.minHeight = `${ map.getContainer().clientHeight }px`;
 			const panelWidth = Math.min( 720, mapBounds.width * 0.76 );
 			container.style.setProperty(
@@ -737,16 +740,6 @@ function createPointInfoPanel( map, container, intro, points ) {
 
 export default function createStorymapMap( container, onPointInfoReady ) {
 	const basemap = container.dataset.storymapBasemap || 'osm';
-	const map = new MapLibreMap( {
-		container,
-		style: getBasemapStyle( basemap ),
-		center: [ 0, 0 ],
-		zoom: 2,
-	} );
-	map.addControl(
-		new NavigationControl( { showCompass: false } ),
-		'top-left'
-	);
 	const points = JSON.parse( container.dataset.storymapPoints || '[]' );
 	const intro = JSON.parse( container.dataset.storymapIntro || '{}' );
 	const coordinates = points.map( ( point ) => [
@@ -755,11 +748,38 @@ export default function createStorymapMap( container, onPointInfoReady ) {
 	] );
 	const bounds = new LngLatBounds();
 	coordinates.forEach( ( coordinate ) => bounds.extend( coordinate ) );
+	const map = new MapLibreMap( {
+		container,
+		style: getBasemapStyle( basemap ),
+		center: coordinates.length ? bounds.getCenter() : [ 0, 0 ],
+		zoom: coordinates.length === 1 ? points[ 0 ].zoom : 2,
+	} );
+	if ( coordinates.length > 1 ) {
+		const overviewCamera = map.cameraForBounds( bounds, {
+			padding: getOverviewPadding( map ),
+			maxZoom: 12,
+		} );
+		if ( overviewCamera ) {
+			map.jumpTo( overviewCamera );
+		}
+	}
+	map.addControl(
+		new NavigationControl( { showCompass: false } ),
+		'top-left'
+	);
 	const pointInfo = createPointInfoPanel( map, container, intro, points );
+	if ( coordinates.length === 1 ) {
+		map.jumpTo( {
+			center: coordinates[ 0 ],
+			zoom: points[ 0 ].zoom,
+			padding: getInfoPanelPadding( map, pointInfo.panel ),
+		} );
+	}
 	onPointInfoReady?.( pointInfo.updateIntro );
 	const navigationControl = new StorymapNavigationControl(
 		points,
 		bounds,
+		pointInfo.panel,
 		( index, direction ) => pointInfo.scrollToPoint( index, direction ),
 		( direction ) => pointInfo.scrollToIntro( direction )
 	);
@@ -809,22 +829,6 @@ export default function createStorymapMap( container, onPointInfoReady ) {
 	if ( coordinates.length ) {
 		map.addControl( new StorymapOverviewControl( points ), 'bottom-left' );
 		container.append( navigationControl.onAdd( map ) );
-
-		map.once( 'load', () => {
-			if ( coordinates.length === 1 ) {
-				map.flyTo( {
-					center: coordinates[ 0 ],
-					zoom: Math.max( 12, points[ 0 ].zoom ),
-					padding: getInfoPanelPadding( map ),
-				} );
-				return;
-			}
-
-			map.fitBounds( bounds, {
-				padding: getOverviewPadding( map ),
-				maxZoom: 12,
-			} );
-		} );
 	}
 
 	return map;

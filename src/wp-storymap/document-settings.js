@@ -4,6 +4,7 @@ import {
 	ColorPicker,
 	SelectControl,
 	TextControl,
+	ToggleControl,
 } from '@wordpress/components';
 import { MediaUpload, MediaUploadCheck } from '@wordpress/block-editor';
 import { useEntityProp } from '@wordpress/core-data';
@@ -139,14 +140,26 @@ function StorymapDocumentSettings() {
 					updateDimension( 'wp_storymap_height', value )
 				}
 			/>
+			<ToggleControl
+				label={ __( 'Full browser width', 'wp-storymap' ) }
+				checked={ Boolean( storyMeta.wp_storymap_full_bleed ) }
+				help={ __(
+					'Let the map extend beyond the page content margins to the full browser width.',
+					'wp-storymap'
+				) }
+				onChange={ ( value ) =>
+					updateMeta( 'wp_storymap_full_bleed', value )
+				}
+			/>
 			<TextControl
 				label={ __( 'Map width (px)', 'wp-storymap' ) }
 				type="number"
 				min="0"
 				step="1"
 				value={ storyMeta.wp_storymap_width || '' }
+				disabled={ Boolean( storyMeta.wp_storymap_full_bleed ) }
 				help={ __(
-					'Leave empty to use the full screen width.',
+					'Leave empty to use the available width. This is ignored while full browser width is enabled.',
 					'wp-storymap'
 				) }
 				onChange={ updateWidth }

@@ -5,3 +5,9 @@
 .editor-styles-wrapper .storymap-map-container.alignfull {
 	max-width: none;
 }
+
+.editor-styles-wrapper .storymap-map-container--full-bleed {
+	width: 100vw;
+	max-width: 100vw;
+	margin-left: calc(50% - 50vw);
+}

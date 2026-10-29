@@ -898,6 +898,7 @@ function wp_storymap_render_point_admin_page() {
 	$editing_point_id = isset( $_GET['point_id'] ) ? absint( wp_unslash( $_GET['point_id'] ) ) : 0;
 	$editing_point = null;
 	$marker_color = '#3FB1CE';
+	$point_zoom = 12;
 	$editing_point_failed = false;
 	$points = array();
 	$points_query_failed = false;
@@ -917,6 +918,7 @@ function wp_storymap_render_point_admin_page() {
 		$editing_point_failed = (bool) $wpdb->last_error;
 		if ( $editing_point ) {
 			$marker_color = wp_storymap_get_point_marker_color( $editing_point_id );
+			$point_zoom = max( 0, min( 22, (int) $editing_point->zoom ) );
 		}
 	}
 
@@ -943,7 +945,7 @@ function wp_storymap_render_point_admin_page() {
 		<?php elseif ( 'save_failed' === $status ) : ?>
 			<div class="notice notice-error"><p><?php esc_html_e( 'The point or its marker color could not be saved. Check that the legacy points table is available and try again.', 'wp-storymap' ); ?></p></div>
 		<?php elseif ( 'invalid' === $status ) : ?>
-			<div class="notice notice-error"><p><?php esc_html_e( 'The point details were invalid. Check the title, marker color, location, image, and selected story.', 'wp-storymap' ); ?></p></div>
+			<div class="notice notice-error"><p><?php esc_html_e( 'The point details were invalid. Check the title, marker color, location, zoom, image, and selected story.', 'wp-storymap' ); ?></p></div>
 		<?php elseif ( 'no_stories' === $status ) : ?>
 			<div class="notice notice-error"><p><?php esc_html_e( 'The selected legacy story is no longer available. Choose an existing story and try again.', 'wp-storymap' ); ?></p></div>
 		<?php endif; ?>
@@ -1038,7 +1040,7 @@ function wp_storymap_render_point_admin_page() {
 									class="wp-storymap-point-map"
 									data-lat="<?php echo esc_attr( $editing_point ? $editing_point->lat : '' ); ?>"
 									data-lon="<?php echo esc_attr( $editing_point ? $editing_point->lon : '' ); ?>"
-									data-zoom="<?php echo esc_attr( $editing_point ? $editing_point->zoom : 2 ); ?>"
+									data-zoom="<?php echo esc_attr( $editing_point ? $point_zoom : 2 ); ?>"
 									style="--wp-storymap-marker-color:<?php echo esc_attr( $marker_color ); ?>"
 									role="region"
 									aria-label="<?php esc_attr_e( 'Choose point location on map', 'wp-storymap' ); ?>"
@@ -1049,7 +1051,13 @@ function wp_storymap_render_point_admin_page() {
 									<label for="wp-storymap-point-lon"><?php esc_html_e( 'Longitude', 'wp-storymap' ); ?></label>
 									<input id="wp-storymap-point-lon" name="lon" type="number" min="-180" max="180" step="any" value="<?php echo esc_attr( $editing_point ? $editing_point->lon : '' ); ?>" required>
 								</div>
-								<input id="wp-storymap-point-zoom" name="zoom" type="hidden" value="<?php echo esc_attr( $editing_point ? $editing_point->zoom : 2 ); ?>">
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="wp-storymap-point-zoom"><?php esc_html_e( 'Public map zoom', 'wp-storymap' ); ?></label></th>
+							<td>
+								<input id="wp-storymap-point-zoom" name="zoom" type="number" min="0" max="22" step="1" value="<?php echo esc_attr( $point_zoom ); ?>" required>
+								<p class="description"><?php esc_html_e( 'Choose the MapLibre zoom level used when this point is selected. Available levels: 0 to 22.', 'wp-storymap' ); ?></p>
 							</td>
 						</tr>
 						<tr>
@@ -1199,7 +1207,7 @@ function wp_storymap_save_point() {
 		$longitude < -180 ||
 		$longitude > 180 ||
 		$zoom < 0 ||
-		$zoom > 20 ||
+		$zoom > 22 ||
 		! $marker_color ||
 		( $image_id && ! wp_attachment_is_image( $image_id ) ) ||
 		( $image_url && strlen( $image_url ) > 500 )
