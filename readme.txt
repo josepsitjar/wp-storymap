@@ -41,6 +41,13 @@ More information on how to install at [keepyourphoto](https://www.keepyourphoto.
 
 == Changelog ==
 
+= 3.3 =
+
+* Added per-point MapLibre zoom settings, applied when navigating to each point.
+* Set the initial map view to the story's points without an animated zoom.
+* Added a full-browser-width option for maps constrained by theme content margins.
+* Improved responsive layouts: the information panel moves below the map at widths up to 1200px, with more map space and better-positioned navigation arrows.
+
 = 3.2 =
 
 * Point-to-point connection
